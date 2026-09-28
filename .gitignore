@@ -204,8 +204,18 @@ worktrees/
 docs/superpowers/
 resources/bundled-bun
 resources/bundled-aioncore
+resources/aioncore-download
+resources/aioncore-local-bundle
 resources/hub
 /resources/windows/support/_sentry-dsn.generated.nsh
+
+# Local Cursor-integration notes (not product docs)
+/feat.md
+
+# Accidental repo-root copies of %TEMP%\aionui-release-assets-* .
+# Windows flattens `C:\Users\...` into a single folder name that starts with
+# `C` plus a colon stand-in, so match the unique temp prefix instead.
+/C*aionui-release-assets*
 
 # Server build output
 dist-server/
