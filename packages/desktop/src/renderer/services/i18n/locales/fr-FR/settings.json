@@ -1443,6 +1443,7 @@
     "keyInvalid": "Cursor a refusé cette clé API. Vérifiez qu’elle a été copiée en entier et qu’elle n’a pas été révoquée.",
     "keyUnverified": "Impossible de vérifier la clé API pour le moment ({{error}}). Elle sera tout de même enregistrée.",
     "connectFailed": "Échec de la connexion à Cursor : {{error}}",
+    "sessionFailed": "Cursor CLI est installé, mais Cursor a refusé la connexion. Vérifiez que la clé API est valide et non révoquée, et que cet ordinateur peut joindre cursor.com.",
     "alreadyLatest": "La CLI Cursor est déjà à jour ({{version}}).",
     "updated": "CLI Cursor mise à jour vers {{version}}.",
     "installFailed": "Échec de l’installation de la CLI Cursor : {{error}}",

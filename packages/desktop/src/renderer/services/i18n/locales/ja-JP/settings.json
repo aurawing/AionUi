@@ -1445,6 +1445,7 @@
     "keyInvalid": "Cursor がこの API キーを拒否しました。完全にコピーされているか、失効していないか確認してください。",
     "keyUnverified": "現在 API キーを検証できません（{{error}}）。このまま保存します。",
     "connectFailed": "Cursor への接続に失敗しました: {{error}}",
+    "sessionFailed": "Cursor CLI はインストール済みですが、Cursor が接続を受け付けませんでした。API キーが有効で取り消されていないこと、このコンピューターから cursor.com にアクセスできることを確認してください。",
     "alreadyLatest": "Cursor CLI は最新です（{{version}}）。",
     "updated": "Cursor CLI を {{version}} に更新しました。",
     "installFailed": "Cursor CLI のインストールに失敗しました: {{error}}",

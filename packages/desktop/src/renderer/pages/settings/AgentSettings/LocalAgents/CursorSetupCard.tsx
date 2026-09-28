@@ -14,7 +14,7 @@ import { LinkOne, Robot } from '@icon-park/react';
 import type { TFunction } from 'i18next';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { maskApiKey, useCursorSetup } from './useCursorSetup';
+import { describeCursorHealthIssue, maskApiKey, useCursorSetup } from './useCursorSetup';
 
 type CursorSetupCardProps = {
   agent: ManagedAgent;
@@ -169,6 +169,12 @@ const CursorSetupCard: React.FC<CursorSetupCardProps> = ({ agent, refreshCatalog
               <Progress percent={Math.round(progress.percent ?? 0)} showText={false} strokeWidth={6} />
               <Typography.Text className='text-12px text-t-tertiary'>{describeProgress(t, progress)}</Typography.Text>
             </div>
+          ) : null}
+
+          {cardStatus === 'offline' ? (
+            <Typography.Text data-testid='cursor-setup-issue' className='block text-12px leading-18px text-warning-6'>
+              {describeCursorHealthIssue(t, agent)}
+            </Typography.Text>
           ) : null}
 
           <div className='flex flex-wrap items-center justify-between gap-8px'>

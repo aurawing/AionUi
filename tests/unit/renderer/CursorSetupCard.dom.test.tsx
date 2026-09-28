@@ -43,10 +43,12 @@ vi.mock('@/common', () => ({ ipcBridge: bridge }));
 
 import CursorSetupCard from '@renderer/pages/settings/AgentSettings/LocalAgents/CursorSetupCard';
 import {
+  describeCursorHealthIssue,
   findCursorAgent,
   maskApiKey,
   withCursorApiKey,
 } from '@renderer/pages/settings/AgentSettings/LocalAgents/useCursorSetup';
+import type { TFunction } from 'i18next';
 import type { ManagedAgent } from '@/renderer/utils/model/agentTypes';
 
 const LAUNCHER = '/data/managed-cli/cursor-agent/bin/cursor-agent';
@@ -154,6 +156,45 @@ describe('CursorSetupCard', () => {
     expect(bridge.acpConversation.setAgentOverrides.invoke).not.toHaveBeenCalled();
   });
 
+  it('saves a key it cannot verify and explains a failed Cursor session without pointing at CLI sign-in', async () => {
+    bridge.cursorCli.verifyApiKey.invoke.mockResolvedValue({
+      success: true,
+      data: { status: 'unreachable', message: 'net::ERR_NAME_NOT_RESOLVED' },
+    });
+    bridge.acpConversation.setAgentOverrides.invoke.mockResolvedValue(
+      makeAgent({ status: 'offline', installed: true, last_check_error_code: 'acp_init_failed' })
+    );
+    render(<CursorSetupCard agent={makeAgent()} refreshCatalog={vi.fn().mockResolvedValue(undefined)} />);
+    await screen.findByText('settings.cursorSetup.cliNotInstalled');
+
+    typeKeyAndConnect('key_unverified_123');
+
+    await waitFor(() => expect(message.warning).toHaveBeenCalledWith('settings.cursorSetup.sessionFailed'));
+    expect(message.warning).toHaveBeenCalledWith('settings.cursorSetup.keyUnverified');
+    expect(bridge.acpConversation.setAgentOverrides.invoke).toHaveBeenCalledWith(
+      expect.objectContaining({ command_override: LAUNCHER })
+    );
+  });
+
+  it('keeps the reason visible on the card while the saved key does not work', async () => {
+    bridge.cursorCli.getStatus.invoke.mockResolvedValue(status(true));
+    bridge.acpConversation.getAgentOverrides.invoke.mockResolvedValue({
+      command_override: LAUNCHER,
+      env_override: [{ name: 'CURSOR_API_KEY', value: 'key_revoked_1234567890' }],
+    });
+    bridge.cursorCli.verifyApiKey.invoke.mockResolvedValue({ success: true, data: { status: 'invalid' } });
+
+    render(
+      <CursorSetupCard
+        agent={makeAgent({ status: 'offline', installed: true, last_check_error_code: 'auth_required' })}
+        refreshCatalog={vi.fn()}
+      />
+    );
+
+    expect(await screen.findByTestId('cursor-setup-issue')).toHaveTextContent('settings.cursorSetup.sessionFailed');
+    expect(screen.getByTestId('cursor-setup-status')).toHaveTextContent('settings.cursorSetup.statusOffline');
+  });
+
   it('shows the connected account when a saved key drives the managed CLI', async () => {
     bridge.cursorCli.getStatus.invoke.mockResolvedValue(status(true));
     bridge.acpConversation.getAgentOverrides.invoke.mockResolvedValue({
@@ -186,6 +227,19 @@ describe('useCursorSetup helpers', () => {
   it('masks keys without revealing short ones', () => {
     expect(maskApiKey('key_live_1234567890')).toBe('key_li••••7890');
     expect(maskApiKey('short')).toBe('••••••••');
+  });
+
+  it('uses the generic diagnostics for problems other than a rejected session', () => {
+    const t = ((key: string) => key) as unknown as TFunction;
+    expect(describeCursorHealthIssue(t, makeAgent({ last_check_error_code: 'command_not_found' }))).toBe(
+      'settings.agentManagement.errorCodes.command_not_found'
+    );
+    expect(describeCursorHealthIssue(t, makeAgent({ last_check_error_code: 'health_check_failed' }))).toBe(
+      'settings.cursorSetup.sessionFailed'
+    );
+    expect(describeCursorHealthIssue(t, makeAgent({ status: 'offline' }))).toBe(
+      'settings.agentManagement.testConnectionOffline'
+    );
   });
 
   it('only matches the builtin Cursor row', () => {

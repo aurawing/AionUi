@@ -13,6 +13,7 @@ import {
 } from '@/common/types/agent/cursorCli';
 import { formatManagedAgentDiagnosticMessage, type ManagedAgent } from '@/renderer/utils/model/agentTypes';
 import { Message } from '@arco-design/web-react';
+import type { TFunction } from 'i18next';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -32,6 +33,21 @@ export const withCursorApiKey = (env: EnvOverride[], apiKey: string | null): Env
 
 export const maskApiKey = (apiKey: string): string =>
   apiKey.length <= 12 ? '••••••••' : `${apiKey.slice(0, 6)}••••${apiKey.slice(-4)}`;
+
+// The generic guidance for these codes tells users to sign in through the CLI,
+// which the managed setup deliberately never asks for.
+const CURSOR_SESSION_ERROR_CODES = new Set([
+  'acp_init_failed',
+  'auth_required',
+  'health_check_failed',
+  'session_send_failed',
+]);
+
+export const describeCursorHealthIssue = (t: TFunction, agent: ManagedAgent): string =>
+  agent.last_check_error_code && CURSOR_SESSION_ERROR_CODES.has(agent.last_check_error_code)
+    ? t('settings.cursorSetup.sessionFailed')
+    : formatManagedAgentDiagnosticMessage(t, agent) ||
+      t('settings.agentManagement.testConnectionOffline', { name: agent.name });
 
 const unwrap = <T>(result: BridgeResult<T>): T => {
   if (!result?.success || result.data === undefined) throw new Error(result?.msg || 'Unknown error');
@@ -118,10 +134,7 @@ export const useCursorSetup = ({ agent, refreshCatalog }: UseCursorSetupParams) 
         Message.success(email ? t('settings.cursorSetup.connectedAs', { email }) : t('settings.cursorSetup.connected'));
         return;
       }
-      Message.warning(
-        formatManagedAgentDiagnosticMessage(t, result) ||
-          t('settings.agentManagement.testConnectionOffline', { name: result.name })
-      );
+      Message.warning(describeCursorHealthIssue(t, result));
     },
     [t]
   );

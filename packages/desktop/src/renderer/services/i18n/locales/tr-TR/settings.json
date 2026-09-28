@@ -1443,6 +1443,7 @@
     "keyInvalid": "Cursor bu API anahtarını reddetti. Anahtarın eksiksiz kopyalandığından ve iptal edilmediğinden emin olun.",
     "keyUnverified": "API anahtarı şu anda doğrulanamadı ({{error}}). Yine de kaydediliyor.",
     "connectFailed": "Cursor bağlantısı başarısız: {{error}}",
+    "sessionFailed": "Cursor CLI yüklü, ancak Cursor bağlantıyı kabul etmedi. API anahtarının geçerli olduğundan ve iptal edilmediğinden, ayrıca bu bilgisayarın cursor.com adresine erişebildiğinden emin olun.",
     "alreadyLatest": "Cursor CLI zaten güncel ({{version}}).",
     "updated": "Cursor CLI {{version}} sürümüne güncellendi.",
     "installFailed": "Cursor CLI kurulamadı: {{error}}",

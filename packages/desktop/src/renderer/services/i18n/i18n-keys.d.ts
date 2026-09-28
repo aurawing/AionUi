@@ -1963,6 +1963,7 @@ export type I18nKey =
   | 'settings.cursorSetup.removeKey'
   | 'settings.cursorSetup.removed'
   | 'settings.cursorSetup.replaceKeyPlaceholder'
+  | 'settings.cursorSetup.sessionFailed'
   | 'settings.cursorSetup.statusInstalling'
   | 'settings.cursorSetup.statusOffline'
   | 'settings.cursorSetup.statusOnline'

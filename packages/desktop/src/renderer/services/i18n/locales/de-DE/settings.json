@@ -1443,6 +1443,7 @@
     "keyInvalid": "Cursor hat diesen API-Schlüssel abgelehnt. Prüfen Sie, ob er vollständig kopiert und nicht widerrufen wurde.",
     "keyUnverified": "Der API-Schlüssel konnte gerade nicht geprüft werden ({{error}}). Er wird trotzdem gespeichert.",
     "connectFailed": "Cursor konnte nicht verbunden werden: {{error}}",
+    "sessionFailed": "Cursor CLI ist installiert, aber Cursor hat die Verbindung nicht angenommen. Prüfe, ob der API-Schlüssel gültig und nicht widerrufen ist und ob dieser Computer cursor.com erreichen kann.",
     "alreadyLatest": "Die Cursor-CLI ist bereits aktuell ({{version}}).",
     "updated": "Cursor-CLI auf {{version}} aktualisiert.",
     "installFailed": "Cursor-CLI konnte nicht installiert werden: {{error}}",

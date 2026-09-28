@@ -1458,6 +1458,7 @@
     "keyInvalid": "Cursor відхилив цей API-ключ. Переконайтеся, що його скопійовано повністю і не відкликано.",
     "keyUnverified": "Зараз не вдалося перевірити API-ключ ({{error}}). Його все одно буде збережено.",
     "connectFailed": "Не вдалося підключити Cursor: {{error}}",
+    "sessionFailed": "Cursor CLI встановлено, але Cursor не прийняв підключення. Переконайтеся, що API-ключ дійсний і не відкликаний, а цей комп’ютер може підключитися до cursor.com.",
     "alreadyLatest": "Cursor CLI вже оновлено ({{version}}).",
     "updated": "Cursor CLI оновлено до {{version}}.",
     "installFailed": "Не вдалося встановити Cursor CLI: {{error}}",

@@ -1445,6 +1445,7 @@
     "keyInvalid": "Cursor 拒絕了此 API Key，請確認已完整複製且未被撤銷。",
     "keyUnverified": "暫時無法驗證此 API Key（{{error}}），仍會儲存。",
     "connectFailed": "連線 Cursor 失敗：{{error}}",
+    "sessionFailed": "Cursor CLI 已安裝，但 Cursor 未接受連線。請確認 API Key 有效且未被撤銷，並且這台電腦可以連上 cursor.com。",
     "alreadyLatest": "Cursor CLI 已是最新版本（{{version}}）。",
     "updated": "Cursor CLI 已更新至 {{version}}。",
     "installFailed": "安裝 Cursor CLI 失敗：{{error}}",

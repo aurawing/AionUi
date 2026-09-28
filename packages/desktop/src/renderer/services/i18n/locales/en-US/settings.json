@@ -1443,6 +1443,7 @@
     "keyInvalid": "Cursor rejected this API key. Make sure it was copied completely and has not been revoked.",
     "keyUnverified": "Could not verify the API key right now ({{error}}). Saving it anyway.",
     "connectFailed": "Failed to connect Cursor: {{error}}",
+    "sessionFailed": "Cursor CLI is installed, but Cursor did not accept the connection. Make sure the API key is valid and not revoked, and that this computer can reach cursor.com.",
     "alreadyLatest": "Cursor CLI is already up to date ({{version}}).",
     "updated": "Cursor CLI updated to {{version}}.",
     "installFailed": "Failed to install Cursor CLI: {{error}}",

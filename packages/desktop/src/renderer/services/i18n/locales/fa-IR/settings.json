@@ -1443,6 +1443,7 @@
     "keyInvalid": "Cursor این کلید API را رد کرد. مطمئن شوید کلید کامل کپی شده و باطل نشده است.",
     "keyUnverified": "در حال حاضر امکان بررسی کلید API نیست ({{error}}). کلید با این حال ذخیره می‌شود.",
     "connectFailed": "اتصال به Cursor ناموفق بود: {{error}}",
+    "sessionFailed": "Cursor CLI نصب شده است، اما Cursor اتصال را نپذیرفت. مطمئن شوید کلید API معتبر است و لغو نشده، و این رایانه به cursor.com دسترسی دارد.",
     "alreadyLatest": "CLI ‏Cursor به‌روز است ({{version}}).",
     "updated": "CLI ‏Cursor به نسخه {{version}} به‌روزرسانی شد.",
     "installFailed": "نصب CLI ‏Cursor ناموفق بود: {{error}}",

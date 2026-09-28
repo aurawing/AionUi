@@ -1446,6 +1446,7 @@
     "keyInvalid": "O Cursor rejeitou esta chave de API. Verifique se ela foi copiada por completo e não foi revogada.",
     "keyUnverified": "Não foi possível verificar a chave de API agora ({{error}}). Ela será salva mesmo assim.",
     "connectFailed": "Falha ao conectar o Cursor: {{error}}",
+    "sessionFailed": "O Cursor CLI está instalado, mas o Cursor não aceitou a conexão. Verifique se a chave de API é válida e não foi revogada, e se este computador consegue acessar cursor.com.",
     "alreadyLatest": "A CLI do Cursor já está atualizada ({{version}}).",
     "updated": "CLI do Cursor atualizada para {{version}}.",
     "installFailed": "Falha ao instalar a CLI do Cursor: {{error}}",
