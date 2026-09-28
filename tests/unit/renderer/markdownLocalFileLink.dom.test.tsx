@@ -196,6 +196,18 @@ describe('MarkdownView local file links', () => {
     expect(link).toHaveAttribute('href', 'https://aionui.com/docs#L10');
   });
 
+  it('keeps Windows .cursor asset paths intact so CommonMark does not eat \\.', () => {
+    render(
+      <MarkdownView>
+        {String.raw`![斗鸡眼橘猫](C:\Users\aurawing\.cursor\projects\slug\assets\cross-eyed-orange-cat.png)`}
+      </MarkdownView>
+    );
+
+    const image = screen.getByAltText('斗鸡眼橘猫');
+    expect(image.getAttribute('src')).toContain('.cursor/projects/slug/assets/cross-eyed-orange-cat.png');
+    expect(image.getAttribute('src')).not.toContain('aurawing.cursor');
+  });
+
   it('adds empty alt text to external raw HTML images without alt text', () => {
     const { container } = render(
       <MarkdownView allowHtml>{'<img src="https://example.com/generated.png" />'}</MarkdownView>

@@ -222,6 +222,30 @@ export const toLocalFileHref = (filePath: string): string => {
   return encodeURI(withScheme);
 };
 
+const toPosixWindowsPath = (windowsPath: string): string => windowsPath.replace(/\\/g, '/');
+
+const stripFileSchemePrefix = (value: string): string => value.replace(/^file:\/\/\/?/i, '');
+
+/**
+ * CommonMark treats ASCII punctuation after `\` as escaped, so a Windows path
+ * like `C:\Users\me\.cursor\file.png` becomes `C:\Users\me.cursor\file.png`
+ * during parse. Rewrite those destinations to forward slashes (and wrap in
+ * `<>`) before feeding markdown to the parser.
+ */
+export const rewriteWindowsMarkdownFileDestinations = (markdown: string): string => {
+  const withAngleBrackets = markdown.replace(
+    /(!?\[[^\]]*]\(<)((?:file:\/\/\/?)?[A-Za-z]:\\[^>]+)(>\))/gi,
+    (_match, prefix: string, dest: string, suffix: string) =>
+      `${prefix}${toPosixWindowsPath(stripFileSchemePrefix(dest))}${suffix}`
+  );
+
+  return withAngleBrackets.replace(
+    /(!?\[[^\]]*]\()((?:file:\/\/\/?)?[A-Za-z]:\\[^\s)]+)(\s+(?:"[^"]*"|'[^']*'))?(\))/gi,
+    (_match, prefix: string, dest: string, title: string | undefined, suffix: string) =>
+      `${prefix}<${toPosixWindowsPath(stripFileSchemePrefix(dest))}>${title ?? ''}${suffix}`
+  );
+};
+
 /**
  * Get line background style for diff rendering.
  * Highlights additions (green), deletions (red), and hunk headers (blue).

@@ -71,4 +71,53 @@ describe('LocalImageView workspace root from ConversationContext', () => {
       workspace: undefined,
     });
   });
+
+  it('uses the Cursor project directory as the fs sandbox for generated assets', async () => {
+    const src =
+      'C:/Users/aurawing/.cursor/projects/C-Users-aurawing-AppData-Roaming-AionUi-slug/assets/cross-eyed-orange-cat.png';
+    renderInConversation('C:/Users/aurawing/AppData/Roaming/AionUi/slug', src);
+    await waitFor(() => expect(hoisted.getImageBase64).toHaveBeenCalled());
+    expect(hoisted.getImageBase64).toHaveBeenCalledWith({
+      path: src,
+      workspace: 'C:/Users/aurawing/.cursor/projects/C-Users-aurawing-AppData-Roaming-AionUi-slug',
+    });
+  });
+
+  it('posix-normalizes a Windows backslash src before requesting the image', async () => {
+    renderInConversation('C:/workspace/demo', String.raw`C:\Users\aurawing\.cursor\projects\slug\assets\cat.png`);
+    await waitFor(() => expect(hoisted.getImageBase64).toHaveBeenCalled());
+    expect(hoisted.getImageBase64).toHaveBeenCalledWith({
+      path: 'C:/Users/aurawing/.cursor/projects/slug/assets/cat.png',
+      workspace: 'C:/Users/aurawing/.cursor/projects/slug',
+    });
+  });
+
+  it('retries Cursor assets without a workspace when the sandboxed read fails', async () => {
+    const src = 'C:/Users/aurawing/.cursor/projects/slug/assets/cat.png';
+    hoisted.getImageBase64
+      .mockRejectedValueOnce(new Error('PATH_OUTSIDE_SANDBOX'))
+      .mockResolvedValueOnce('data:image/png;base64,abc');
+
+    renderInConversation('C:/workspace/demo', src);
+
+    await waitFor(() => expect(hoisted.getImageBase64).toHaveBeenCalledTimes(2));
+    expect(hoisted.getImageBase64).toHaveBeenNthCalledWith(1, {
+      path: src,
+      workspace: 'C:/Users/aurawing/.cursor/projects/slug',
+    });
+    expect(hoisted.getImageBase64).toHaveBeenNthCalledWith(2, {
+      path: src,
+      workspace: undefined,
+    });
+  });
+
+  it('does not retry unsandboxed when a non-Cursor image read fails', async () => {
+    hoisted.getImageBase64.mockRejectedValueOnce(new Error('PATH_OUTSIDE_SANDBOX'));
+    renderInConversation('/workspace/demo', '/var/tmp/aionui/pic.png');
+    await waitFor(() => expect(hoisted.getImageBase64).toHaveBeenCalledTimes(1));
+    expect(hoisted.getImageBase64).toHaveBeenCalledWith({
+      path: '/var/tmp/aionui/pic.png',
+      workspace: '/workspace/demo',
+    });
+  });
 });

@@ -24,7 +24,11 @@ import CodeBlock from './CodeBlock';
 import LocalFileLink from './LocalFileLink';
 import ShadowView from './ShadowView';
 import { MARKDOWN_REMARK_PLUGINS, MarkdownTable, MarkdownTd } from './markdownComponents';
-import { resolveLocalFileLinkPath, resolveLocalFileLinkReference } from './markdownUtils';
+import {
+  resolveLocalFileLinkPath,
+  resolveLocalFileLinkReference,
+  rewriteWindowsMarkdownFileDestinations,
+} from './markdownUtils';
 import type { LocalFileLinkReference } from './markdownUtils';
 
 const isLocalFilePath = (src: string): boolean => {
@@ -51,7 +55,8 @@ const MarkdownView: React.FC<MarkdownViewProps> = React.memo(
 
     const normalizedChildren = useMemo(() => {
       if (typeof childrenProp === 'string') {
-        let text = childrenProp.replace(/file:\/\//g, '');
+        let text = rewriteWindowsMarkdownFileDestinations(childrenProp);
+        text = text.replace(/file:\/\//g, '');
         text = convertLatexDelimiters(text);
         return text;
       }

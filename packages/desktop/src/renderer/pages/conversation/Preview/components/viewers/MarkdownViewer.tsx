@@ -15,7 +15,10 @@ import {
   MarkdownTd,
   SANITIZED_HTML_REHYPE_PLUGINS,
 } from '@/renderer/components/Markdown/markdownComponents';
-import { resolveLocalFileLinkReference } from '@/renderer/components/Markdown/markdownUtils';
+import {
+  resolveLocalFileLinkReference,
+  rewriteWindowsMarkdownFileDestinations,
+} from '@/renderer/components/Markdown/markdownUtils';
 import { useTextSelection } from '@/renderer/hooks/ui/useTextSelection';
 import 'katex/dist/katex.min.css';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -45,7 +48,7 @@ const isDataOrRemoteUrl = (value?: string): boolean => {
 
 const isAbsoluteLocalPath = (value?: string): boolean => {
   if (!value) return false;
-  return /^([a-zA-Z]:\\|\\\\|\/)/.test(value);
+  return /^([a-zA-Z]:[\\/]|\\\\|\/)/.test(value);
 };
 
 // Join a project-relative directory with a relative image src, resolving `.`/`..`
@@ -293,7 +296,10 @@ const MarkdownPreview: React.FC<MarkdownPreviewProps> = ({
 
   // 预览源：转换 LaTeX 分隔符并重写外部媒体 URL / Preview source: convert LaTeX delimiters and rewrite external media URLs
   const previewSource = useMemo(
-    () => convertLatexDelimiters(normalizeLocalFileSchemeLinks(rewriteExternalMediaUrls(content))),
+    () =>
+      convertLatexDelimiters(
+        normalizeLocalFileSchemeLinks(rewriteWindowsMarkdownFileDestinations(rewriteExternalMediaUrls(content)))
+      ),
     [content]
   );
 

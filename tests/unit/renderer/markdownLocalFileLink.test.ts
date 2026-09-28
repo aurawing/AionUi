@@ -8,6 +8,7 @@ import { describe, expect, it } from 'vitest';
 import {
   resolveLocalFileLinkPath,
   resolveLocalFileLinkReference,
+  rewriteWindowsMarkdownFileDestinations,
   toLocalFileHref,
 } from '@/renderer/components/Markdown/markdownUtils';
 
@@ -135,6 +136,32 @@ describe('resolveLocalFileLinkPath', () => {
     expect(resolveLocalFileLinkReference('https://github.com/org/repo/blob/main/file.ts#L10')).toBeNull();
     expect(resolveLocalFileLinkReference('/Users/demo/file.ts#l10')).toBeNull();
     expect(resolveLocalFileLinkReference('/Users/demo/file.ts#L10-l20')).toBeNull();
+  });
+
+  it('rewrites Windows markdown image destinations so CommonMark cannot eat \\.cursor', () => {
+    const rewritten = rewriteWindowsMarkdownFileDestinations(
+      '![斗鸡眼橘猫](C:\\Users\\aurawing\\.cursor\\projects\\slug\\assets\\cross-eyed-orange-cat.png)'
+    );
+
+    expect(rewritten).toContain('C:/Users/aurawing/.cursor/projects/slug/assets/cross-eyed-orange-cat.png');
+    expect(rewritten).not.toContain('aurawing.cursor');
+    expect(rewritten).not.toContain('\\');
+  });
+
+  it('rewrites angle-bracket and file:// Windows destinations to posix paths', () => {
+    expect(rewriteWindowsMarkdownFileDestinations('![cat](<C:\\Users\\me\\.cursor\\cat.png>)')).toContain(
+      'C:/Users/me/.cursor/cat.png'
+    );
+    expect(rewriteWindowsMarkdownFileDestinations('![cat](file:///C:\\Users\\me\\.cursor\\cat.png)')).toContain(
+      'C:/Users/me/.cursor/cat.png'
+    );
+  });
+
+  it('leaves http links and relative images unchanged', () => {
+    expect(rewriteWindowsMarkdownFileDestinations('[docs](https://aionui.com/docs)')).toBe(
+      '[docs](https://aionui.com/docs)'
+    );
+    expect(rewriteWindowsMarkdownFileDestinations('![chart](./assets/chart.png)')).toBe('![chart](./assets/chart.png)');
   });
 
   it('does not treat normal web links or app routes as local files', () => {
