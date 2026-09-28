@@ -15,22 +15,24 @@ import AionModal from '@/renderer/components/base/AionModal';
 import { AionSearchInput } from '@/renderer/components/base';
 import { useLayoutContext } from '@/renderer/hooks/context/LayoutContext';
 import { useManagedAgents } from '@/renderer/hooks/agent/useManagedAgents';
-import { openExternalUrl } from '@/renderer/utils/platform';
+import { isElectronDesktop, openExternalUrl } from '@/renderer/utils/platform';
 import { Button, Message, Typography } from '@arco-design/web-react';
 import TalkToButlerButton from '@/renderer/components/base/TalkToButlerButton';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import AgentCard from './AgentCard';
+import AgentCard from '../AgentCard';
 import { isDeprecatedRuntimeAgentType } from '@/renderer/utils/model/agentTypeSupportPolicy';
-import InlineAgentEditor, { type CustomAgentDraft } from './InlineAgentEditor';
-import { getBoundAssistants, useAssistantsForAgents } from './BoundAssistants';
-import SettingsPageHeader from '../components/SettingsPageHeader';
+import InlineAgentEditor, { type CustomAgentDraft } from '../InlineAgentEditor';
+import { getBoundAssistants, useAssistantsForAgents } from '../BoundAssistants';
+import SettingsPageHeader from '../../components/SettingsPageHeader';
 import { useNavigate } from 'react-router-dom';
 import {
   filterAgentsByAvailability,
   getAgentAvailabilityFilterStats,
   type AgentAvailabilityFilter,
-} from './agentFilters';
+} from '../agentFilters';
+import CursorSetupCard from './CursorSetupCard';
+import { findCursorAgent } from './useCursorSetup';
 
 const LOCAL_AGENT_SETUP_GUIDE_URL = 'https://github.com/iOfficeAI/AionUi/wiki/ACP-Setup';
 
@@ -57,6 +59,8 @@ const LocalAgents: React.FC = () => {
   );
 
   const customAgents: ManagedAgent[] = allAgents.filter((a) => a.agent_source === 'custom');
+  // The managed Cursor CLI is installed by the Electron main process, so WebUI has no setup card.
+  const cursorAgent = isElectronDesktop() ? findCursorAgent(allAgents) : undefined;
 
   const [editorVisible, setEditorVisible] = useState(false);
   const [editingAgent, setEditingAgent] = useState<ManagedAgent | null>(null);
@@ -267,6 +271,8 @@ const LocalAgents: React.FC = () => {
       {isRefreshing ? (
         <div className='text-11px text-t-tertiary'>{t('settings.agentManagement.refreshingStatuses')}</div>
       ) : null}
+
+      {cursorAgent ? <CursorSetupCard agent={cursorAgent} refreshCatalog={refreshCatalog} /> : null}
 
       {/* Detected Agents section */}
       <div data-testid='agent-management-official-section'>
