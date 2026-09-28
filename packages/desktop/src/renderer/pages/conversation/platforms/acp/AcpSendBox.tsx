@@ -1,7 +1,18 @@
 import { ipcBridge } from '@/common';
-import type { IConversationMcpStatus } from '@/common/config/storage';
 import { isBackendHttpError } from '@/common/adapter/httpBridge';
 import { isSideQuestionSupported } from '@/common/chat/sideQuestion';
+import type { IConversationMcpStatus } from '@/common/config/storage';
+import {
+  advertisedCursorModelId,
+  applyCursorFastPreference,
+  readCursorFastMode,
+} from '@/common/types/agent/cursorModelId';
+import {
+  displayedCursorPermissionMode,
+  rememberCursorYoloSelection,
+  toCursorAcpMode,
+  withCursorYoloModeOption,
+} from '@/common/types/agent/cursorYolo';
 import { parseError, uuid } from '@/common/utils';
 import AgentModeSelector from '@/renderer/components/agent/AgentModeSelector';
 import ContextUsageIndicator from '@/renderer/components/agent/ContextUsageIndicator';
@@ -19,6 +30,7 @@ import FilePreview from '@/renderer/components/media/FilePreview';
 import HorizontalFileList from '@/renderer/components/media/HorizontalFileList';
 import { classifyConfigSetError, useAcpConfigOptions } from '@/renderer/hooks/agent/useAcpConfigOptions';
 import { useAcpModelInfo } from '@/renderer/hooks/agent/useAcpModelInfo';
+import { useCursorYoloMode } from '@/renderer/hooks/agent/useCursorFastMode';
 import { useAutoTitle } from '@/renderer/hooks/chat/useAutoTitle';
 import { getSendBoxDraftHook, type FileOrFolderItem } from '@/renderer/hooks/chat/useSendBoxDraft';
 import { createSetUploadFile, useSendBoxFiles } from '@/renderer/hooks/chat/useSendBoxFiles';
@@ -125,6 +137,7 @@ const AcpSendBox: React.FC<{
     context_limit,
   } = messageState;
   const { t } = useTranslation();
+  const { yoloEnabled } = useCursorYoloMode();
   const teamPermission = useTeamPermission();
   // In team mode, all agents show the permission mode selector (members don't propagate)
   const showModeSelector = true;
@@ -196,23 +209,32 @@ const AcpSendBox: React.FC<{
   });
   useEffect(() => {
     if (!runtimeMode?.currentValue) return;
-    setCurrentMode(runtimeMode.currentValue);
-  }, [runtimeMode?.currentValue]);
+    setCurrentMode(
+      displayedCursorPermissionMode(backend, runtimeMode.currentValue, yoloEnabled) ?? runtimeMode.currentValue
+    );
+  }, [backend, runtimeMode?.currentValue, yoloEnabled]);
 
   const handleSheetModeChange = useCallback(
     async (mode: string) => {
-      if (!runtimeMode || mode === runtimeMode.currentValue) return;
+      if (!runtimeMode) return;
+      const acpMode = toCursorAcpMode(backend, mode) ?? mode;
+      const displayedCurrent =
+        displayedCursorPermissionMode(backend, runtimeMode.currentValue, yoloEnabled) ?? runtimeMode.currentValue;
+      if (mode === displayedCurrent) return;
       try {
-        await runtimeConfig.setConfigOption(runtimeMode.id, mode);
+        if (runtimeMode.currentValue !== acpMode) {
+          await runtimeConfig.setConfigOption(runtimeMode.id, acpMode);
+        }
+        rememberCursorYoloSelection(backend, mode);
         setCurrentMode(mode);
-        if (isLeaderInTeam) teamPermission?.propagateMode?.(mode);
+        if (isLeaderInTeam) teamPermission?.propagateMode?.(acpMode);
         Message.success(t('agentMode.switchSuccess'));
       } catch (error) {
         console.error('[AcpSendBox] Failed to switch mode via sheet:', error);
         Message.error(t(configErrorMessageKey(error)));
       }
     },
-    [isLeaderInTeam, runtimeConfig, runtimeMode, t, teamPermission]
+    [backend, isLeaderInTeam, runtimeConfig, runtimeMode, t, teamPermission, yoloEnabled]
   );
 
   const handleContentChange = useCallback(
@@ -538,25 +560,36 @@ Please check your local CLI tool authentication status`,
   const sheetEntries = useMemo<MobileActionSheetEntry[]>(() => {
     if (!isMobile) return [];
 
-    const availableModes =
+    const availableModes = withCursorYoloModeOption(
+      backend,
       runtimeMode?.options.map((item) => ({
         value: item.value,
         label: item.label,
         description: item.description ?? undefined,
-      })) ?? [];
+      })) ?? [],
+      t('agentMode.yoloTooltip')
+    );
+    const displayedCurrentMode =
+      displayedCursorPermissionMode(backend, runtimeMode?.currentValue ?? currentMode, yoloEnabled) ??
+      runtimeMode?.currentValue ??
+      currentMode;
     const modeOptions: MobileActionSheetOption[] = availableModes.map((mode) => ({
       key: mode.value,
       label: t(`agentMode.${mode.value}`, { defaultValue: mode.label }),
       description: mode.description,
-      active: (runtimeMode?.currentValue ?? currentMode) === mode.value,
+      active: displayedCurrentMode === mode.value,
     }));
 
+    const advertisedCurrentModelId = advertisedCursorModelId(
+      (model_info?.available_models ?? []).map((model) => model.id),
+      model_info?.current_model_id
+    );
     const modelOptions: MobileActionSheetOption[] = canSwitchModel
       ? (model_info?.available_models ?? []).map((model) => ({
           key: model.id,
           label: model.label || model.id,
           description: model.description,
-          active: model_info?.current_model_id === model.id,
+          active: advertisedCurrentModelId === model.id,
         }))
       : [];
 
@@ -578,7 +611,7 @@ Please check your local CLI tool authentication status`,
         submenu: {
           title: t('common.model', { defaultValue: 'Model' }),
           options: modelOptions,
-          onSelect: (id) => selectModel(id),
+          onSelect: (id) => selectModel(applyCursorFastPreference(id, readCursorFastMode())),
         },
       });
     }
@@ -679,6 +712,7 @@ Please check your local CLI tool authentication status`,
     return entries;
   }, [
     attachEntries,
+    backend,
     canSwitchModel,
     currentMode,
     handleSheetModeChange,
@@ -692,6 +726,7 @@ Please check your local CLI tool authentication status`,
     selectModel,
     setContent,
     t,
+    yoloEnabled,
   ]);
 
   // Accept file-selection events only when targeted at this conversation (or

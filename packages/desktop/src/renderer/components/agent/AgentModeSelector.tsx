@@ -9,7 +9,14 @@ import {
   type AcpConfigOptionsPort,
   useAcpConfigOptions,
 } from '@/renderer/hooks/agent/useAcpConfigOptions';
+import { useCursorYoloMode } from '@/renderer/hooks/agent/useCursorFastMode';
 import type { AgentModeOption } from '@/renderer/utils/model/agentTypes';
+import {
+  displayedCursorPermissionMode,
+  rememberCursorYoloSelection,
+  toCursorAcpMode,
+  withCursorYoloModeOption,
+} from '@/common/types/agent/cursorYolo';
 import { useLayoutContext } from '@/renderer/hooks/context/LayoutContext';
 import { AgentLogoIcon } from './AgentBadge';
 import { Dropdown, Menu, Message, Tooltip } from '@arco-design/web-react';
@@ -104,6 +111,7 @@ const AgentModeSelector: React.FC<AgentModeSelectorProps> = ({
   const { t } = useTranslation();
   const layout = useLayoutContext();
   const isMobile = Boolean(layout?.isMobile);
+  const { yoloEnabled } = useCursorYoloMode();
   const runtimeConfig = useAcpConfigOptions({
     conversation_id: conversation_id ?? '',
     prepareRuntime: beforeRuntimeSync,
@@ -124,10 +132,14 @@ const AgentModeSelector: React.FC<AgentModeSelectorProps> = ({
 
   // Priority: observed config_options > dynamic modes from persisted agent_metadata.
   const modes = useMemo(() => {
-    if (runtimeModes && runtimeModes.length > 0) return runtimeModes;
-    if (dynamicModes && dynamicModes.length > 0) return dynamicModes;
-    return [];
-  }, [runtimeModes, dynamicModes]);
+    const base =
+      runtimeModes && runtimeModes.length > 0
+        ? runtimeModes
+        : dynamicModes && dynamicModes.length > 0
+          ? dynamicModes
+          : [];
+    return withCursorYoloModeOption(backend, base, t('agentMode.yoloTooltip'));
+  }, [backend, dynamicModes, runtimeModes, t]);
   const defaultMode = modes[0]?.value ?? initialMode ?? 'default';
   // Validate initialMode against available modes; fall back to backend's default
   // when the provided value doesn't match (e.g. opencode has 'build'/'plan', not 'default')
@@ -144,11 +156,14 @@ const AgentModeSelector: React.FC<AgentModeSelectorProps> = ({
   // switched mid-turn). Kept apart from `current_mode` on purpose: `current_mode` must
   // keep answering "which permission is governing right now".
   const pendingMode = conversation_id ? runtimeConfig.pendingValues?.[runtimeMode?.id ?? 'mode'] : undefined;
+  const pendingDisplay = pendingMode
+    ? (displayedCursorPermissionMode(backend, pendingMode, yoloEnabled) ?? pendingMode)
+    : undefined;
   const pendingModeLabel = useMemo(() => {
-    if (!pendingMode || pendingMode === current_mode) return undefined;
-    const option = modes.find((mode) => mode.value === pendingMode);
-    return option ? getDisplayModeLabel(option) : pendingMode;
-  }, [pendingMode, current_mode, modes, getDisplayModeLabel]);
+    if (!pendingDisplay || pendingDisplay === current_mode) return undefined;
+    const option = modes.find((mode) => mode.value === pendingDisplay);
+    return option ? getDisplayModeLabel(option) : pendingDisplay;
+  }, [current_mode, getDisplayModeLabel, modes, pendingDisplay]);
 
   const can_switchMode = modes.length > 0 && Boolean(conversation_id || onModeSelect);
   const runtimeModeBlocked = Boolean(runtimeMode && runtimeConfig.isConfigOptionBlocked?.(runtimeMode.id));
@@ -167,8 +182,10 @@ const AgentModeSelector: React.FC<AgentModeSelectorProps> = ({
 
   useEffect(() => {
     if (!runtimeMode?.currentValue) return;
-    setCurrentMode(runtimeMode.currentValue);
-  }, [runtimeMode?.currentValue]);
+    setCurrentMode(
+      displayedCursorPermissionMode(backend, runtimeMode.currentValue, yoloEnabled) ?? runtimeMode.currentValue
+    );
+  }, [backend, runtimeMode?.currentValue, yoloEnabled]);
 
   const handleModeChange = useCallback(
     async (mode: string) => {
@@ -177,38 +194,41 @@ const AgentModeSelector: React.FC<AgentModeSelectorProps> = ({
 
       if (mode === current_mode) return;
 
+      const acpMode = toCursorAcpMode(backend, mode) ?? mode;
+
       // Local mode (Guid page): update state and notify parent, no IPC needed
       if (!conversation_id && onModeSelect) {
+        rememberCursorYoloSelection(backend, mode);
         setCurrentMode(mode);
         onModeSelect(mode);
-        onModeChanged?.(mode);
+        onModeChanged?.(acpMode);
         return;
       }
 
       if (!conversation_id) return;
 
-      const setActiveMode = async () => {
+      setIsLoading(true);
+      try {
         if (!runtimeMode) {
           throw new Error('config_not_observed');
         }
-        return runtimeConfig.setConfigOption(runtimeMode.id, mode);
-      };
-
-      setIsLoading(true);
-      try {
-        const applied = await setActiveMode();
-        // A deferred switch comes back with the snapshot still on the OLD value — that is
-        // the backend being honest, not a failure. Leave `current_mode` where it is (the
-        // pill must keep naming the permission actually governing) and say so; the
-        // pending marker is already driven by `pendingValues`. When the agent applies it,
-        // an `acp_config_option` frame updates the snapshot and clears the marker.
-        const landed = applied?.find((option) => option.id === runtimeMode?.id)?.current_value === mode;
-        if (!landed) {
-          Message.info(t('agentMode.switchPendingNextTurn', { defaultValue: 'Takes effect on the next turn' }));
-          return;
+        if (runtimeMode.currentValue !== acpMode) {
+          const applied = await runtimeConfig.setConfigOption(runtimeMode.id, acpMode);
+          // A deferred switch comes back with the snapshot still on the OLD value — that is
+          // the backend being honest, not a failure. Leave `current_mode` where it is (the
+          // pill must keep naming the permission actually governing) and say so; the
+          // pending marker is already driven by `pendingValues`. When the agent applies it,
+          // an `acp_config_option` frame updates the snapshot and clears the marker.
+          const landed = applied?.find((option) => option.id === runtimeMode.id)?.current_value === acpMode;
+          if (!landed) {
+            rememberCursorYoloSelection(backend, mode);
+            Message.info(t('agentMode.switchPendingNextTurn', { defaultValue: 'Takes effect on the next turn' }));
+            return;
+          }
         }
+        rememberCursorYoloSelection(backend, mode);
         setCurrentMode(mode);
-        onModeChanged?.(mode);
+        onModeChanged?.(acpMode);
         Message.success(t('agentMode.switchSuccess'));
       } catch (error) {
         console.error('[AgentModeSelector] Failed to switch mode:', error);
@@ -217,7 +237,7 @@ const AgentModeSelector: React.FC<AgentModeSelectorProps> = ({
         setIsLoading(false);
       }
     },
-    [conversation_id, current_mode, onModeChanged, onModeSelect, runtimeConfig, runtimeMode, t]
+    [backend, conversation_id, current_mode, onModeChanged, onModeSelect, runtimeConfig, runtimeMode, t]
   );
 
   const renderLogo = () => (
@@ -255,7 +275,7 @@ const AgentModeSelector: React.FC<AgentModeSelectorProps> = ({
                   truncate, so a right-hand "下一轮生效" would overflow. The two markers
                   are mutually exclusive by construction. */}
               <span aria-hidden='true' className='w-16px shrink-0 text-primary'>
-                {current_mode === mode.value ? '✓' : pendingMode === mode.value ? '⏱' : ''}
+                {current_mode === mode.value ? '✓' : pendingDisplay === mode.value ? '⏱' : ''}
               </span>
               {mode.description ? (
                 <Tooltip content={mode.description} position='right'>

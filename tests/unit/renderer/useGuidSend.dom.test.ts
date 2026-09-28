@@ -112,6 +112,31 @@ describe('useGuidSend', () => {
     expect(swrMutateMock).toHaveBeenCalledWith('assistants.list');
   });
 
+  it('maps Cursor YOLO to ACP agent permission and leaves other YOLO modes unchanged', async () => {
+    const cursorDeps = createDeps();
+    cursorDeps.selectedAssistantBackend = 'cursor';
+    cursorDeps.selectedMode = 'yolo';
+    cursorDeps.selectedAcpModel = 'composer-2.5[fast=true]';
+
+    const { result: cursorResult } = renderHook(() => useGuidSend(cursorDeps));
+    await act(async () => {
+      await cursorResult.current.handleSend();
+    });
+    expect(createConversationInvokeMock.mock.calls[0][0].assistant?.conversation_overrides?.permission).toBe('agent');
+
+    createConversationInvokeMock.mockClear();
+    const aionrsDeps = createDeps();
+    aionrsDeps.selectedAssistantBackend = 'aionrs';
+    aionrsDeps.selectedMode = 'yolo';
+    aionrsDeps.current_model = { provider_id: 'openai', model: 'gemini-2.5-pro', use_model: 'gemini-2.5-pro' } as never;
+
+    const { result: aionrsResult } = renderHook(() => useGuidSend(aionrsDeps));
+    await act(async () => {
+      await aionrsResult.current.handleSend();
+    });
+    expect(createConversationInvokeMock.mock.calls[0][0].assistant?.conversation_overrides?.permission).toBe('yolo');
+  });
+
   it('falls back to assistant default skill and MCP ids for preset conversations before local Guid overrides exist', async () => {
     const deps = createDeps();
     deps.guidEnabledSkills = undefined;
@@ -321,6 +346,37 @@ describe('useGuidSend', () => {
     // `default` is a real row of claude's catalog, not a synonym for "unpicked": it must
     // travel so the agent runs the account default the row advertises.
     expect(payload.assistant.conversation_overrides.model).toBe('default');
+  });
+
+  it('rewrites a picked Cursor model so Fast stays off by default', async () => {
+    window.localStorage.removeItem('aionui.cursor.fastMode');
+    const deps = createDeps();
+    deps.selectedAssistantBackend = 'cursor';
+    deps.selectedAcpModel = 'composer-2.5[fast=true]';
+
+    const { result } = renderHook(() => useGuidSend(deps));
+    await act(async () => {
+      await result.current.handleSend();
+    });
+
+    const payload = createConversationInvokeMock.mock.calls[0][0];
+    expect(payload.assistant.conversation_overrides.model).toBe('composer-2.5[fast=false]');
+  });
+
+  it('rewrites an unpicked Cursor last-model id only when Fast must change', async () => {
+    window.localStorage.removeItem('aionui.cursor.fastMode');
+    const deps = createDeps();
+    deps.selectedAssistantBackend = 'cursor';
+    deps.selectedAcpModel = null;
+    deps.assistantDefaultModelId = 'grok-4.6[effort=high,fast=true]';
+
+    const { result } = renderHook(() => useGuidSend(deps));
+    await act(async () => {
+      await result.current.handleSend();
+    });
+
+    const payload = createConversationInvokeMock.mock.calls[0][0];
+    expect(payload.assistant.conversation_overrides.model).toBe('grok-4.6[effort=high,fast=false]');
   });
 
   it('does not create a conversation without assistant identity', async () => {

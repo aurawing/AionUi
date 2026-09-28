@@ -6,7 +6,7 @@
 
 import type { AcpConfigSetStatus, AcpDerivedOption } from '@/renderer/hooks/agent/useAcpConfigOptions';
 import AionInlineSearchInput from '@/renderer/components/base/AionInlineSearchInput';
-import { Menu, Tooltip } from '@arco-design/web-react';
+import { Menu, Switch, Tooltip } from '@arco-design/web-react';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -169,5 +169,26 @@ export const RuntimeSelectorModelList: React.FC<{
         )}
       </div>
     </>
+  );
+};
+
+/** Footer switch for Cursor parameterized models (`[fast=true|false]`). */
+export const CursorFastModeRow: React.FC<{
+  checked: boolean;
+  disabled?: boolean;
+  onChange: (checked: boolean) => void;
+}> = ({ checked, disabled = false, onChange }) => {
+  const { t } = useTranslation();
+  return (
+    <div
+      className='flex items-center justify-between gap-8px px-12px py-8px border-t border-b-base'
+      data-testid='cursor-fast-mode'
+      onClick={(event) => event.stopPropagation()}
+    >
+      <Tooltip content={t('agent.model.fastModeTooltip')}>
+        <span className='text-13px text-t-primary'>{t('agent.model.fastMode')}</span>
+      </Tooltip>
+      <Switch size='small' checked={checked} disabled={disabled} onChange={onChange} />
+    </div>
   );
 };

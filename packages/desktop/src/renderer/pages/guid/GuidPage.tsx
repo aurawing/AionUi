@@ -9,8 +9,8 @@ import { buildGuidSlashCommands } from '@/common/chat/slash/guidSlashCommands';
 import type { SlashCommandItem } from '@/common/chat/slash/types';
 import type { IMcpServer, TProviderWithModel } from '@/common/config/storage';
 import { resolveLocaleKey } from '@/common/utils';
+import { catalogCursorModelId } from '@/common/types/agent/cursorModelId';
 import type { AssistantDetail } from '@/common/types/agent/assistantTypes';
-
 import { useInputFocusRing } from '@/renderer/hooks/chat/useInputFocusRing';
 import { appendPromptToDraft } from '@/renderer/hooks/chat/useSendBoxDraft';
 import { getFuzzyMatchIndices, useSlashCommandController } from '@/renderer/hooks/chat/useSlashCommandController';
@@ -263,6 +263,7 @@ const GuidPage: React.FC = () => {
     selectedAcpModel: agentSelection.selectedAcpModel,
     selectedThoughtLevelValue: agentSelection.selectedThoughtLevelValue,
     current_model: modelSelection.current_model,
+    assistantDefaultModelId: resolvedAssistantDefaults.modelId,
 
     guidDisabledBuiltinSkills,
     guidEnabledSkills,
@@ -418,11 +419,10 @@ const GuidPage: React.FC = () => {
           await modelSelection.resetCurrentModel({ persistPreference: false });
         }
       } else if (shouldApplyDefaultModel && resolvedDefaults.modelId) {
-        const availableModelIds = new Set(agentSelection.currentAcpCachedModelInfo?.available_models.map((m) => m.id));
+        const availableModelIds = agentSelection.currentAcpCachedModelInfo?.available_models.map((m) => m.id) ?? [];
+        const catalogId = catalogCursorModelId(availableModelIds, resolvedDefaults.modelId);
         agentSelection.setSelectedAcpModel(
-          availableModelIds.size === 0 || availableModelIds.has(resolvedDefaults.modelId)
-            ? resolvedDefaults.modelId
-            : null,
+          availableModelIds.length === 0 || catalogId ? (catalogId ?? resolvedDefaults.modelId) : null,
           { persistPreference: false }
         );
       } else if (shouldApplyDefaultModel) {

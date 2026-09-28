@@ -31,7 +31,9 @@
     "switchSuccess": "모델이 성공적으로 전환되었습니다",
     "switchFailed": "모델 전환에 실패했습니다",
     "searchPlaceholder": "모델 검색",
-    "noResults": "일치하는 모델이 없습니다"
+    "noResults": "일치하는 모델이 없습니다",
+    "fastMode": "Fast 모드",
+    "fastModeTooltip": "켜면 Cursor Fast로 더 빠르게 응답합니다. 높은 품질을 위해 기본값은 꺼짐입니다."
   },
   "config": {
     "setting": "설정을 적용하는 중...",

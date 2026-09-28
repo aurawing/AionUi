@@ -7,6 +7,7 @@
   "read-only": "只读",
   "full-access": "完全访问",
   "yolo": "全自动",
+  "yoloTooltip": "自动批准终端与工具请求。Cursor 会话仍保持 Agent 模式。",
   "yoloNoSandbox": "全自动（无沙盒）",
   "auto": "自动",
   "dontAsk": "仅预批准",

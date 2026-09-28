@@ -11,11 +11,18 @@ import { getModelDisplayLabel } from '@/renderer/utils/model/agentLogo';
 import { iconColors } from '@/renderer/styles/colors';
 import { Dropdown, Menu, Message, Tooltip } from '@arco-design/web-react';
 import { Brain, Down } from '@icon-park/react';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import RuntimeSelectorPill, { RuntimeSelectorLoadingIndicator } from './RuntimeSelectorPill';
 import {
+  advertisedCursorModelId,
+  applyCursorFastPreference,
+  cursorCatalogAdvertisesFast,
+} from '@/common/types/agent/cursorModelId';
+import { useCursorFastMode } from '@/renderer/hooks/agent/useCursorFastMode';
+import {
   composeRuntimeSelectorLabel,
+  CursorFastModeRow,
   getCurrentThoughtLevelLabel,
   isConfigSetting,
   RUNTIME_SUBMENU_TRIGGER_PROPS,
@@ -107,6 +114,50 @@ const AcpModelSelector: React.FC<{
     onSelectModelSuccess: () => Message.success(t('agent.model.switchSuccess')),
     onSelectModelFailed: (_modelId, error) => Message.error(t(configErrorMessageKey(error))),
   });
+  const { fastEnabled, setFastEnabled } = useCursorFastMode();
+  const showFastMode = cursorCatalogAdvertisesFast(model_info?.available_models ?? []);
+  const advertisedCurrentModelId = useMemo(
+    () =>
+      advertisedCursorModelId(
+        model_info?.available_models.map((model) => model.id) ?? [],
+        model_info?.current_model_id
+      ),
+    [model_info]
+  );
+  const appliedFastConversationRef = useRef<string | null>(null);
+
+  const handleSelectModel = useCallback(
+    (modelId: string) => {
+      selectModel(applyCursorFastPreference(modelId, fastEnabled));
+    },
+    [fastEnabled, selectModel]
+  );
+
+  const handleFastModeChange = useCallback(
+    (enabled: boolean) => {
+      setFastEnabled(enabled);
+      if (model_info?.current_model_id) {
+        selectModel(applyCursorFastPreference(model_info.current_model_id, enabled));
+      }
+    },
+    [model_info?.current_model_id, selectModel, setFastEnabled]
+  );
+
+  useEffect(() => {
+    appliedFastConversationRef.current = null;
+  }, [conversation_id]);
+
+  useEffect(() => {
+    if (!showFastMode || !model_info?.current_model_id || !canSwitch) return;
+    if (appliedFastConversationRef.current === conversation_id) return;
+    const nextId = applyCursorFastPreference(model_info.current_model_id, fastEnabled);
+    if (nextId === model_info.current_model_id) {
+      appliedFastConversationRef.current = conversation_id;
+      return;
+    }
+    appliedFastConversationRef.current = conversation_id;
+    selectModel(nextId);
+  }, [canSwitch, conversation_id, fastEnabled, model_info?.current_model_id, selectModel, showFastMode]);
 
   useEffect(() => {
     onRuntimeReadyChange?.(isRuntimeReady);
@@ -114,8 +165,7 @@ const AcpModelSelector: React.FC<{
 
   const defaultModelLabel = t('common.defaultModel');
   const rawDisplayLabel =
-    (model_info?.current_model_id &&
-      model_info.available_models.find((m) => m.id === model_info.current_model_id)?.label) ||
+    (advertisedCurrentModelId && model_info?.available_models.find((m) => m.id === advertisedCurrentModelId)?.label) ||
     model_info?.current_model_label ||
     model_info?.current_model_id ||
     '';
@@ -241,9 +291,9 @@ const AcpModelSelector: React.FC<{
               >
                 <RuntimeSelectorModelList
                   models={model_info.available_models}
-                  currentModelId={model_info.current_model_id}
+                  currentModelId={advertisedCurrentModelId}
                   disabled={isRuntimeSetting || isConfigOptionBlocked('model')}
-                  onSelect={selectModel}
+                  onSelect={handleSelectModel}
                 />
               </Menu.SubMenu>
               <Menu.SubMenu
@@ -280,11 +330,18 @@ const AcpModelSelector: React.FC<{
             /* No thought level: the dropdown is the model list directly. */
             <RuntimeSelectorModelList
               models={model_info.available_models}
-              currentModelId={model_info.current_model_id}
+              currentModelId={advertisedCurrentModelId}
               disabled={isRuntimeSetting || isConfigOptionBlocked('model')}
-              onSelect={selectModel}
+              onSelect={handleSelectModel}
             />
           )}
+          {showFastMode ? (
+            <CursorFastModeRow
+              checked={fastEnabled}
+              disabled={isRuntimeSetting || isConfigOptionBlocked('model')}
+              onChange={handleFastModeChange}
+            />
+          ) : null}
         </Menu>
       }
     >

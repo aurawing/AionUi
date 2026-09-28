@@ -32,6 +32,8 @@ vi.mock('react-i18next', () => ({
       if (key === 'common.model') return 'Model';
       if (key === 'conversation.welcome.modelSwitchNotSupported') return 'Model switch is not supported';
       if (key === 'agent.thoughtLevel.label') return 'Thinking Level';
+      if (key === 'agent.model.fastMode') return 'Fast mode';
+      if (key === 'agent.model.fastModeTooltip') return 'Cursor Fast replies quicker.';
       return key;
     },
   }),
@@ -100,6 +102,24 @@ vi.mock('@arco-design/web-react', () => {
     Menu,
     Tooltip: ({ children, content }: { children?: React.ReactNode; content?: React.ReactNode }) => (
       <span data-tooltip-content={typeof content === 'string' ? content : undefined}>{children}</span>
+    ),
+    Switch: ({
+      checked,
+      disabled,
+      onChange,
+    }: {
+      checked?: boolean;
+      disabled?: boolean;
+      onChange?: (checked: boolean) => void;
+    }) => (
+      <button
+        type='button'
+        role='switch'
+        aria-checked={checked}
+        disabled={disabled}
+        data-testid='cursor-fast-switch'
+        onClick={() => onChange?.(!checked)}
+      />
     ),
   };
 });
@@ -206,5 +226,49 @@ describe('GuidModelSelector', () => {
     expect(screen.getAllByText('gpt-5.3-codex').length).toBeGreaterThan(0);
     expect(screen.queryByText('Thinking Level')).not.toBeInTheDocument();
     expect(screen.queryByText('Medium')).not.toBeInTheDocument();
+  });
+
+  it('shows Fast mode off by default only for Cursor catalogs', () => {
+    window.localStorage.removeItem('aionui.cursor.fastMode');
+
+    const { rerender } = render(
+      <GuidModelSelector
+        isGeminiMode={false}
+        modelList={[]}
+        current_model={undefined}
+        setCurrentModel={vi.fn()}
+        currentAcpCachedModelInfo={{
+          current_model_id: 'gpt-5.3-codex',
+          current_model_label: 'gpt-5.3-codex',
+          available_models: [{ id: 'gpt-5.3-codex', label: 'gpt-5.3-codex' }],
+        }}
+        selectedAcpModel='gpt-5.3-codex'
+        setSelectedAcpModel={vi.fn()}
+      />
+    );
+
+    expect(screen.queryByTestId('cursor-fast-mode')).not.toBeInTheDocument();
+
+    rerender(
+      <GuidModelSelector
+        isGeminiMode={false}
+        modelList={[]}
+        current_model={undefined}
+        setCurrentModel={vi.fn()}
+        currentAcpCachedModelInfo={{
+          current_model_id: 'composer-2.5[fast=true]',
+          current_model_label: 'Composer',
+          available_models: [
+            { id: 'default[]', label: 'Auto' },
+            { id: 'composer-2.5[fast=true]', label: 'Composer' },
+          ],
+        }}
+        selectedAcpModel='composer-2.5[fast=true]'
+        setSelectedAcpModel={vi.fn()}
+      />
+    );
+
+    expect(screen.getByTestId('cursor-fast-mode')).toBeInTheDocument();
+    expect(screen.getByTestId('cursor-fast-switch')).toHaveAttribute('aria-checked', 'false');
   });
 });

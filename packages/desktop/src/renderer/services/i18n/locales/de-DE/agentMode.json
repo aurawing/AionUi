@@ -7,6 +7,7 @@
   "read-only": "Schreibgeschützt",
   "full-access": "Vollzugriff",
   "yolo": "YOLO",
+  "yoloTooltip": "Shell- und Tool-Anfragen automatisch genehmigen. Die Cursor-Sitzung bleibt im Agent-Modus.",
   "yoloNoSandbox": "Vollautomatisch (ohne Sandbox)",
   "auto": "Automatisch",
   "dontAsk": "Nicht fragen",

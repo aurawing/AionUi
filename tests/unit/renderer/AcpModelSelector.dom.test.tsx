@@ -103,6 +103,8 @@ vi.mock('react-i18next', () => ({
       if (key === 'common.defaultModel') return 'Default';
       if (key === 'agent.model.searchPlaceholder') return 'Search models';
       if (key === 'agent.model.noResults') return 'No matching models';
+      if (key === 'agent.model.fastMode') return 'Fast mode';
+      if (key === 'agent.model.fastModeTooltip') return 'Cursor Fast replies quicker.';
       if (key === 'conversation.welcome.useCliModel') return 'Use CLI model';
       if (key === 'conversation.welcome.modelSwitchNotSupported') return 'Model switch is not supported';
       if (key === 'agent.warmup.clickToWake') return 'Click to wake this member';
@@ -176,12 +178,31 @@ vi.mock('@arco-design/web-react', () => {
     Tooltip: ({ children, content }: { children?: React.ReactNode; content?: React.ReactNode }) => (
       <span data-tooltip-content={typeof content === 'string' ? content : undefined}>{children}</span>
     ),
+    Switch: ({
+      checked,
+      disabled,
+      onChange,
+    }: {
+      checked?: boolean;
+      disabled?: boolean;
+      onChange?: (checked: boolean) => void;
+    }) => (
+      <button
+        type='button'
+        role='switch'
+        aria-checked={checked}
+        disabled={disabled}
+        data-testid='cursor-fast-switch'
+        onClick={() => onChange?.(!checked)}
+      />
+    ),
   };
 });
 
 describe('AcpModelSelector runtime options', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    window.localStorage.removeItem('aionui.cursor.fastMode');
     useAcpModelInfoMock.mockReturnValue(makeResult());
   });
 
@@ -513,5 +534,81 @@ describe('AcpModelSelector runtime options', () => {
     await act(async () => {
       resolveTrigger?.();
     });
+  });
+
+  it('hides Fast mode when the catalog does not advertise it', () => {
+    render(<AcpModelSelector conversation_id='conversation-1' backend='codex' />);
+
+    expect(screen.queryByTestId('cursor-fast-mode')).not.toBeInTheDocument();
+  });
+
+  it('shows Fast mode off by default and rewrites the current Cursor model', () => {
+    const selectModel = vi.fn();
+    useAcpModelInfoMock.mockReturnValue(
+      makeResult({
+        thoughtLevel: null,
+        selectModel,
+        model_info: {
+          current_model_id: 'composer-2.5[fast=true]',
+          current_model_label: 'Composer',
+          available_models: [
+            { id: 'default[]', label: 'Auto' },
+            { id: 'composer-2.5[fast=true]', label: 'Composer' },
+            { id: 'grok-4.6[effort=high,fast=true]', label: 'Grok' },
+          ],
+        },
+      })
+    );
+
+    render(<AcpModelSelector conversation_id='conversation-1' backend='cursor' />);
+
+    expect(screen.getByTestId('cursor-fast-mode')).toBeInTheDocument();
+    expect(screen.getByTestId('cursor-fast-switch')).toHaveAttribute('aria-checked', 'false');
+    expect(selectModel).toHaveBeenCalledWith('composer-2.5[fast=false]');
+  });
+
+  it('applies Fast preference when picking a Cursor model', () => {
+    const selectModel = vi.fn();
+    useAcpModelInfoMock.mockReturnValue(
+      makeResult({
+        thoughtLevel: null,
+        selectModel,
+        model_info: {
+          current_model_id: 'composer-2.5[fast=true]',
+          current_model_label: 'Composer',
+          available_models: [
+            { id: 'composer-2.5[fast=true]', label: 'Composer' },
+            { id: 'grok-4.6[effort=high,fast=true]', label: 'Grok' },
+          ],
+        },
+      })
+    );
+
+    render(<AcpModelSelector conversation_id='conversation-1' backend='cursor' />);
+    fireEvent.click(screen.getByText('Grok'));
+
+    expect(selectModel).toHaveBeenCalledWith('grok-4.6[effort=high,fast=false]');
+  });
+
+  it('rewrites the current Cursor model when Fast is toggled on', () => {
+    const selectModel = vi.fn();
+    useAcpModelInfoMock.mockReturnValue(
+      makeResult({
+        thoughtLevel: null,
+        selectModel,
+        model_info: {
+          current_model_id: 'composer-2.5[fast=false]',
+          current_model_label: 'Composer',
+          available_models: [{ id: 'composer-2.5[fast=true]', label: 'Composer' }],
+        },
+      })
+    );
+
+    render(<AcpModelSelector conversation_id='conversation-1' backend='cursor' />);
+    selectModel.mockClear();
+    fireEvent.click(screen.getByTestId('cursor-fast-switch'));
+
+    expect(selectModel).toHaveBeenCalledWith('composer-2.5[fast=true]');
+    expect(window.localStorage.getItem('aionui.cursor.fastMode')).toBe('true');
   });
 });

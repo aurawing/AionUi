@@ -31,7 +31,9 @@
     "switchSuccess": "مدل با موفقیت جابه‌جا شد",
     "switchFailed": "جابه‌جایی مدل ناموفق بود",
     "searchPlaceholder": "جستجوی مدل‌ها",
-    "noResults": "مدلی مطابقت ندارد"
+    "noResults": "مدلی مطابقت ندارد",
+    "fastMode": "حالت Fast",
+    "fastModeTooltip": "با Cursor Fast پاسخ‌ها سریع‌تر می‌آیند. برای کیفیت بهتر، پیش‌فرض خاموش است."
   },
   "config": {
     "setting": "در حال اعمال تنظیم...",

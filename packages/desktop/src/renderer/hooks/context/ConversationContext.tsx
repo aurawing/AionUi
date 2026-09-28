@@ -31,6 +31,12 @@ export interface ConversationContextValue {
   type: 'acp' | 'codex' | 'aionrs';
 
   /**
+   * ACP backend id (e.g. `cursor`, `claude`). Used by permission cards to
+   * apply client-side Cursor YOLO auto-approval without sending `yolo` to ACP.
+   */
+  backend?: string;
+
+  /**
    * Cron job ID (if this conversation was created by a scheduled task)
    */
   cron_job_id?: string;

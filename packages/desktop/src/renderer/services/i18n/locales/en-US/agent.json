@@ -31,7 +31,9 @@
     "switchSuccess": "Model switched successfully",
     "switchFailed": "Failed to switch model",
     "searchPlaceholder": "Search models",
-    "noResults": "No matching models"
+    "noResults": "No matching models",
+    "fastMode": "Fast mode",
+    "fastModeTooltip": "Cursor Fast replies quicker. Leave this off for higher-quality answers."
   },
   "config": {
     "setting": "Applying setting...",

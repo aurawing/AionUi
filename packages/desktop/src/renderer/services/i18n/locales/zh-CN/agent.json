@@ -31,7 +31,9 @@
     "switchSuccess": "模型切换成功",
     "switchFailed": "模型切换失败",
     "searchPlaceholder": "搜索模型",
-    "noResults": "没有匹配的模型"
+    "noResults": "没有匹配的模型",
+    "fastMode": "Fast 模式",
+    "fastModeTooltip": "开启后走 Cursor Fast，回复更快。默认关闭，以获得更高质量的回答。"
   },
   "config": {
     "setting": "正在应用设置...",

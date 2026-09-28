@@ -7,6 +7,7 @@
   "read-only": "Salt okunur",
   "full-access": "Tam erişim",
   "yolo": "YOLO",
+  "yoloTooltip": "Kabuk ve araç isteklerini otomatik onayla. Cursor oturumu Agent modunda kalır.",
   "yoloNoSandbox": "Tam Otomatik (Sandbox Yok)",
   "auto": "Otomatik",
   "dontAsk": "Yalnızca Ön Onaylı",

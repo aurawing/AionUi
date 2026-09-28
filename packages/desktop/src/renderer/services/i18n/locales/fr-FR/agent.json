@@ -31,7 +31,9 @@
     "switchSuccess": "Le modèle a changé avec succès",
     "switchFailed": "Échec du changement de modèle",
     "searchPlaceholder": "Rechercher des modèles",
-    "noResults": "Aucun modèle correspondant"
+    "noResults": "Aucun modèle correspondant",
+    "fastMode": "Mode Fast",
+    "fastModeTooltip": "Avec Cursor Fast, les réponses arrivent plus vite. Désactivé par défaut pour privilégier la qualité."
   },
   "config": {
     "setting": "Application du paramètre...",

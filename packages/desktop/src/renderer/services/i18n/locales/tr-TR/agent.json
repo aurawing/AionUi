@@ -31,7 +31,9 @@
     "switchSuccess": "Model switched successfully",
     "switchFailed": "Failed to switch model",
     "searchPlaceholder": "Model ara",
-    "noResults": "Eşleşen model yok"
+    "noResults": "Eşleşen model yok",
+    "fastMode": "Fast modu",
+    "fastModeTooltip": "Açıkken Cursor Fast daha hızlı yanıt verir. Daha kaliteli yanıtlar için varsayılan olarak kapalıdır."
   },
   "config": {
     "setting": "Ayar uygulanıyor...",

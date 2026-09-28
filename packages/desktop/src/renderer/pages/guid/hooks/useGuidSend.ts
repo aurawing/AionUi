@@ -6,6 +6,8 @@
 
 import { ipcBridge } from '@/common';
 import { type ChatFileRef, chatFileRefPath } from '@/common/types/chatFile';
+import { readCursorFastMode, resolveAcpModelOverride } from '@/common/types/agent/cursorModelId';
+import { toCursorAcpMode } from '@/common/types/agent/cursorYolo';
 import type { IMcpServer, TProviderWithModel } from '@/common/config/storage';
 import { toSessionMcpServer } from '@/renderer/hooks/mcp/catalog';
 import { emitter } from '@/renderer/utils/emitter';
@@ -35,6 +37,7 @@ export type GuidSendDeps = {
   selectedAcpModel: string | null;
   selectedThoughtLevelValue?: string;
   current_model: TProviderWithModel | undefined;
+  assistantDefaultModelId?: string;
 
   guidDisabledBuiltinSkills: string[] | undefined;
   guidEnabledSkills: string[] | undefined;
@@ -82,6 +85,7 @@ export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
     selectedAcpModel,
     selectedThoughtLevelValue,
     current_model,
+    assistantDefaultModelId,
     guidDisabledBuiltinSkills,
     guidEnabledSkills,
     assistantDefaultSkillIds,
@@ -159,11 +163,20 @@ export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
     // picker contradicted itself (the row promised one model, the session used
     // another). Omit it: no pick means no override, and the agent resolves the
     // model from the user's own config.
-    const assistantOverrideModel =
-      selectedAcpModel || (assistantBackend === 'aionrs' ? current_model?.use_model : undefined) || undefined;
+    //
+    // Cursor is the exception: advertised Composer/Grok ids bake `fast=true`.
+    // When Fast is off we rewrite a picked id, or a last-model id only if that
+    // rewrite actually changes it, so the first turn does not silently stay Fast.
+    const assistantOverrideModel = resolveAcpModelOverride({
+      selectedModelId: selectedAcpModel,
+      fallbackModelId: assistantDefaultModelId,
+      isAionrs: assistantBackend === 'aionrs',
+      aionrsModel: current_model?.use_model,
+      fastEnabled: readCursorFastMode(),
+    });
     const assistantOverrides = {
       model: assistantOverrideModel,
-      permission: selectedMode || undefined,
+      permission: toCursorAcpMode(selectedAssistantBackend, selectedMode) || undefined,
       thought_level: selectedThoughtLevelValue || undefined,
       skill_ids: enabled_skills_to_send,
       disabled_builtin_skill_ids: excludeBuiltinSkills,
@@ -291,6 +304,7 @@ export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
     selectedAcpModel,
     selectedThoughtLevelValue,
     current_model,
+    assistantDefaultModelId,
     guidDisabledBuiltinSkills,
     guidEnabledSkills,
     assistantDefaultSkillIds,

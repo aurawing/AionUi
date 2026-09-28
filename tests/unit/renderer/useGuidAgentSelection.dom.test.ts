@@ -7,6 +7,7 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Assistant } from '@/common/types/agent/assistantTypes';
+import { writeCursorYoloMode } from '@/common/types/agent/cursorYolo';
 import type { ManagedAgent } from '@/renderer/utils/model/agentTypes';
 import {
   buildAgentRuntimeModeState,
@@ -44,6 +45,7 @@ vi.mock('@/renderer/hooks/agent/useManagedAgents', () => ({
 
 describe('useGuidAssistantSelection', () => {
   beforeEach(() => {
+    writeCursorYoloMode(false);
     configGetMock.mockReturnValue(undefined);
     configSetMock.mockResolvedValue(undefined);
     mockManagedAgents = [];
@@ -419,6 +421,84 @@ describe('useGuidAssistantSelection', () => {
     expect(result.current.selectedAcpModel).toBe('global.anthropic.claude-opus-4-8');
   });
 
+  it('keeps a Cursor pick when only the Fast param differs from the catalog row', async () => {
+    mockAssistants = [
+      {
+        id: 'assistant-cursor-fast',
+        source: 'user',
+        name: 'Cursor Fast Assistant',
+        name_i18n: {},
+        description_i18n: {},
+        enabled: true,
+        sort_order: 1,
+        agent_id: 'agent-cursor',
+        agent: {
+          type: 'acp',
+          source: 'builtin',
+          acp_backend: 'cursor',
+        },
+        enabled_skills: [],
+        custom_skill_names: [],
+        disabled_builtin_skills: [],
+        context_i18n: {},
+        prompts: [],
+        prompts_i18n: {},
+        models: [],
+        agent_status: 'online',
+        team_selectable: true,
+        deletable: true,
+      } satisfies Assistant,
+    ];
+    mockManagedAgents = [
+      {
+        id: 'agent-cursor',
+        backend: 'cursor',
+        available_models: {
+          current_model_id: 'composer-2.5[fast=true]',
+          current_model_label: 'Composer',
+          available_models: [
+            { id: 'default[]', label: 'Auto' },
+            { id: 'composer-2.5[fast=true]', label: 'Composer' },
+            { id: 'grok-4.6[effort=high,fast=true]', label: 'Grok' },
+          ],
+        },
+      } as unknown as ManagedAgent,
+    ];
+
+    const { result, rerender } = renderHook(() =>
+      useGuidAssistantSelection({
+        resetAssistant: false,
+      })
+    );
+
+    await waitFor(() => {
+      expect(result.current.selectedAssistantId).toBe('assistant-cursor-fast');
+    });
+
+    act(() => {
+      result.current.setSelectedAcpModel('grok-4.6[effort=high,fast=false]');
+    });
+
+    mockManagedAgents = [
+      {
+        id: 'agent-cursor',
+        backend: 'cursor',
+        available_models: {
+          current_model_id: 'composer-2.5[fast=true]',
+          current_model_label: 'Composer',
+          available_models: [
+            { id: 'default[]', label: 'Auto' },
+            { id: 'composer-2.5[fast=true]', label: 'Composer' },
+            { id: 'grok-4.6[effort=high,fast=true]', label: 'Grok' },
+          ],
+        },
+      } as unknown as ManagedAgent,
+    ];
+    rerender();
+
+    expect(result.current.selectedAcpModel).toBe('grok-4.6[effort=high,fast=true]');
+  });
+
   it('does not fall back to historical static modes when managed agent catalog has no modes', async () => {
     mockAssistants = [
       {
@@ -511,6 +591,41 @@ describe('useGuidAssistantSelection', () => {
     expect(result.current.selectedAssistantBackend).toBe('aionrs');
     expect(result.current.selectedMode).toBe('default');
     expect(result.current.currentAgentModeOptions.map((mode) => mode.value)).toEqual(['default', 'auto_edit', 'yolo']);
+  });
+
+  it('injects Cursor YOLO into guid mode options and defaults to it when the preference is on', async () => {
+    writeCursorYoloMode(true);
+    mockAssistants = [
+      assistantFixture({ id: 'assistant-cursor', runtimeKey: 'cursor', source: 'builtin', sortOrder: 1 }),
+    ];
+    mockManagedAgents = [
+      {
+        id: 'agent-cursor',
+        backend: 'cursor',
+        available_modes: {
+          current_mode_id: 'agent',
+          available_modes: [
+            { id: 'agent', name: 'Agent' },
+            { id: 'plan', name: 'Plan' },
+            { id: 'ask', name: 'Ask' },
+          ],
+        },
+      } as unknown as ManagedAgent,
+    ];
+
+    const { result } = renderHook(() =>
+      useGuidAssistantSelection({
+        resetAssistant: false,
+      })
+    );
+
+    await waitFor(() => {
+      expect(result.current.selectedAssistantId).toBe('assistant-cursor');
+    });
+
+    expect(result.current.selectedAssistantBackend).toBe('cursor');
+    expect(result.current.selectedMode).toBe('yolo');
+    expect(result.current.currentAgentModeOptions.map((mode) => mode.value)).toEqual(['agent', 'plan', 'ask', 'yolo']);
   });
 });
 

@@ -5,9 +5,11 @@
  */
 
 import React from 'react';
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { IMessageAcpPermission, IMessagePermission } from '@/common/chat/chatLib';
+import { writeCursorYoloMode } from '@/common/types/agent/cursorYolo';
+import { ConversationProvider } from '@/renderer/hooks/context/ConversationContext';
 import MessageAcpPermission from '@/renderer/pages/conversation/Messages/acp/MessageAcpPermission';
 import MessagePermission from '@/renderer/pages/conversation/Messages/components/MessagePermission';
 
@@ -89,6 +91,7 @@ describe('permission message adapters', () => {
     vi.clearAllMocks();
     genericInvoke.mockResolvedValue(undefined);
     acpInvoke.mockResolvedValue(undefined);
+    writeCursorYoloMode(false);
   });
 
   it('keeps the generic payload exact and defaults confirmation to proceed_once', async () => {
@@ -145,6 +148,37 @@ describe('permission message adapters', () => {
       call_id: 'tool-call-1',
     });
     expect(await screen.findByTestId('message-acp-permission-status')).toBeInTheDocument();
+  });
+
+  it('auto-confirms Cursor ACP permission cards when YOLO is enabled', async () => {
+    writeCursorYoloMode(true);
+    render(
+      <ConversationProvider value={{ conversation_id: 'conversation-1', type: 'acp', backend: 'cursor' }}>
+        <MessageAcpPermission message={makeAcpMessage()} />
+      </ConversationProvider>
+    );
+
+    await waitFor(() => {
+      expect(acpInvoke).toHaveBeenCalledWith({
+        confirm_key: 'allow-always-id',
+        msg_id: 'acp-message-1',
+        conversation_id: 'conversation-1',
+        call_id: 'tool-call-1',
+      });
+    });
+    expect(await screen.findByTestId('message-acp-permission-status')).toBeInTheDocument();
+  });
+
+  it('does not auto-confirm permission cards for other backends even if YOLO is enabled', async () => {
+    writeCursorYoloMode(true);
+    render(
+      <ConversationProvider value={{ conversation_id: 'conversation-1', type: 'acp', backend: 'claude' }}>
+        <MessageAcpPermission message={makeAcpMessage()} />
+      </ConversationProvider>
+    );
+
+    expect(screen.getByTestId('message-acp-permission-option-allow-once-id')).toBeInTheDocument();
+    expect(acpInvoke).not.toHaveBeenCalled();
   });
 
   it('keeps ACP fallbacks actionable when optional display fields are empty', async () => {

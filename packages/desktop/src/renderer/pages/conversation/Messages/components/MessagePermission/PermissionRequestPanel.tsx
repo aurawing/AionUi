@@ -30,6 +30,8 @@ type PermissionRequestPanelProps = {
   detailLabelKey?: string;
   options: PermissionPanelOption[];
   onConfirm: (optionValue: string) => Promise<void>;
+  /** When set, submit this option once (Cursor client-side YOLO). */
+  autoConfirmValue?: string;
 };
 
 export const PermissionRequestPanel: React.FC<PermissionRequestPanelProps> = ({
@@ -42,6 +44,7 @@ export const PermissionRequestPanel: React.FC<PermissionRequestPanelProps> = ({
   detailLabelKey,
   options,
   onConfirm,
+  autoConfirmValue,
 }) => {
   const { t } = useTranslation();
   const optionsIdentity = getPermissionOptionsIdentity(options);
@@ -104,6 +107,13 @@ export const PermissionRequestPanel: React.FC<PermissionRequestPanelProps> = ({
     },
     [hasResponded, onConfirm]
   );
+
+  useEffect(() => {
+    if (!autoConfirmValue) return;
+    const option = options.find((item) => item.value === autoConfirmValue);
+    if (!option) return;
+    void submitOption(option);
+  }, [autoConfirmValue, options, submitOption]);
 
   return (
     <Card className={styles.card} bordered={false} data-testid={`${testIdPrefix}-card`}>

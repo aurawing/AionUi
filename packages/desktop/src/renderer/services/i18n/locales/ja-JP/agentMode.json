@@ -7,6 +7,7 @@
   "read-only": "読み取り専用",
   "full-access": "フルアクセス",
   "yolo": "全自動",
+  "yoloTooltip": "シェルとツールの要求を自動承認します。Cursor セッションは Agent モードのままです。",
   "yoloNoSandbox": "全自動（サンドボックスなし）",
   "auto": "自動",
   "dontAsk": "事前承認のみ",

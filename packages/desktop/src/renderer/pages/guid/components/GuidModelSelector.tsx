@@ -5,6 +5,7 @@
  */
 
 import type { IProvider, TProviderWithModel } from '@/common/config/storage';
+import { advertisedCursorModelId, cursorCatalogAdvertisesFast } from '@/common/types/agent/cursorModelId';
 import { iconColors } from '@/renderer/styles/colors';
 import { getModelDisplayLabel } from '@/renderer/utils/model/agentLogo';
 import type { AgentRuntimeDerivedOption } from '@/renderer/utils/model/agentRuntimeCatalog';
@@ -12,11 +13,13 @@ import type { AcpModelInfo } from '../types';
 import { getAvailableModels } from '../utils/modelUtils';
 import { Button, Dropdown, Menu, Tooltip } from '@arco-design/web-react';
 import { Brain, Down, Plus } from '@icon-park/react';
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import { useCursorFastMode } from '@/renderer/hooks/agent/useCursorFastMode';
 import {
   composeRuntimeSelectorLabel,
+  CursorFastModeRow,
   getCurrentThoughtLevelLabel,
   RUNTIME_SUBMENU_TRIGGER_PROPS,
   RuntimeSelectorCheckedItem,
@@ -57,18 +60,22 @@ const GuidModelSelector: React.FC<GuidModelSelectorProps> = ({
   const { t } = useTranslation();
   const navigate = useNavigate();
   const defaultModelLabel = t('common.defaultModel');
+  const { fastEnabled, setFastEnabled } = useCursorFastMode();
+  const availableAcpModelIds = currentAcpCachedModelInfo?.available_models?.map((model) => model.id) ?? [];
+  const showFastMode = cursorCatalogAdvertisesFast(availableAcpModelIds);
+  const advertisedSelectedAcpModel = advertisedCursorModelId(availableAcpModelIds, selectedAcpModel);
 
   // 过滤掉被禁用的 provider
-  const enabledModelList = React.useMemo(() => {
+  const enabledModelList = useMemo(() => {
     return modelList.filter((p) => p.enabled !== false);
   }, [modelList]);
 
-  const geminiSelectedLabel = React.useMemo(() => {
+  const geminiSelectedLabel = useMemo(() => {
     if (!current_model?.use_model) return '';
     return current_model.use_model;
   }, [current_model?.use_model]);
 
-  const geminiButtonLabel = React.useMemo(() => {
+  const geminiButtonLabel = useMemo(() => {
     return getModelDisplayLabel({
       selected_value: current_model?.use_model,
       selectedLabel: geminiSelectedLabel,
@@ -77,28 +84,28 @@ const GuidModelSelector: React.FC<GuidModelSelectorProps> = ({
     });
   }, [current_model?.use_model, defaultModelLabel, geminiSelectedLabel]);
 
-  const acpSelectedLabel = React.useMemo(() => {
+  const acpSelectedLabel = useMemo(() => {
     return (
-      currentAcpCachedModelInfo?.available_models?.find((m) => m.id === selectedAcpModel)?.label ||
+      currentAcpCachedModelInfo?.available_models?.find((m) => m.id === advertisedSelectedAcpModel)?.label ||
       currentAcpCachedModelInfo?.current_model_label ||
       currentAcpCachedModelInfo?.current_model_id ||
       ''
     );
   }, [
+    advertisedSelectedAcpModel,
     currentAcpCachedModelInfo?.available_models,
     currentAcpCachedModelInfo?.current_model_id,
     currentAcpCachedModelInfo?.current_model_label,
-    selectedAcpModel,
   ]);
 
-  const acpButtonLabel = React.useMemo(() => {
+  const acpButtonLabel = useMemo(() => {
     return getModelDisplayLabel({
-      selected_value: selectedAcpModel || currentAcpCachedModelInfo?.current_model_id,
+      selected_value: advertisedSelectedAcpModel || currentAcpCachedModelInfo?.current_model_id,
       selectedLabel: acpSelectedLabel,
       defaultModelLabel,
       fallbackLabel: defaultModelLabel,
     });
-  }, [acpSelectedLabel, currentAcpCachedModelInfo?.current_model_id, defaultModelLabel, selectedAcpModel]);
+  }, [acpSelectedLabel, advertisedSelectedAcpModel, currentAcpCachedModelInfo?.current_model_id, defaultModelLabel]);
   const selectedThoughtLevelValue = thoughtLevelOption?.currentValue || thoughtLevelOption?.options[0]?.value || '';
   const normalizedThoughtLevelOption =
     thoughtLevelOption && thoughtLevelOption.options.length > 0
@@ -198,7 +205,7 @@ const GuidModelSelector: React.FC<GuidModelSelectorProps> = ({
       const modelListNode = (
         <RuntimeSelectorModelList
           models={currentAcpCachedModelInfo.available_models}
-          currentModelId={selectedAcpModel}
+          currentModelId={advertisedSelectedAcpModel}
           onSelect={(modelId) => setSelectedAcpModel(modelId)}
         />
       );
@@ -207,7 +214,7 @@ const GuidModelSelector: React.FC<GuidModelSelectorProps> = ({
         <Dropdown
           trigger='click'
           droplist={
-            <Menu selectedKeys={selectedAcpModel ? [selectedAcpModel] : []}>
+            <Menu selectedKeys={advertisedSelectedAcpModel ? [advertisedSelectedAcpModel] : []}>
               {normalizedThoughtLevelOption ? (
                 <>
                   {/* Two-level layout: model row on top, thought-level row below;
@@ -253,6 +260,7 @@ const GuidModelSelector: React.FC<GuidModelSelectorProps> = ({
               ) : (
                 modelListNode
               )}
+              {showFastMode ? <CursorFastModeRow checked={fastEnabled} onChange={setFastEnabled} /> : null}
             </Menu>
           }
         >

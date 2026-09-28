@@ -5,6 +5,13 @@
  */
 
 import { assistantRuntimeKey, isAionrsAssistant, type Assistant } from '@/common/types/agent/assistantTypes';
+import { catalogCursorModelId } from '@/common/types/agent/cursorModelId';
+import {
+  displayedCursorPermissionMode,
+  readCursorYoloMode,
+  rememberCursorYoloSelection,
+  withCursorYoloModeOption,
+} from '@/common/types/agent/cursorYolo';
 import { configService } from '@/common/config/configService';
 import type { AcpModelInfo } from '../types';
 import type { AgentModeOption } from '@/renderer/utils/model/agentTypes';
@@ -125,6 +132,7 @@ export const useGuidAssistantSelection = ({
   const [selectedMode, _setSelectedMode] = useState<string>('default');
   const [selectedAcpModel, _setSelectedAcpModel] = useState<string | null>(null);
   const [selectedThoughtLevelValue, _setSelectedThoughtLevelValue] = useState<string>('');
+  const selectedAssistantBackendRef = useRef('');
   const { assistants } = useCustomAgentsLoader();
   const managedAgentRuntimeCatalog = useManagedAgentRuntimeCatalog();
 
@@ -132,6 +140,7 @@ export const useGuidAssistantSelection = ({
     (mode: React.SetStateAction<string>, _options?: { persistPreference?: boolean }) => {
       _setSelectedMode((prev) => {
         const nextMode = typeof mode === 'function' ? mode(prev) : mode;
+        rememberCursorYoloSelection(selectedAssistantBackendRef.current, nextMode);
         return nextMode;
       });
     },
@@ -213,6 +222,7 @@ export const useGuidAssistantSelection = ({
   );
   const selectedAssistantId = selectedAssistant?.id ?? null;
   const selectedAssistantBackend = assistantRuntimeKey(selectedAssistant);
+  selectedAssistantBackendRef.current = selectedAssistantBackend;
   const selectedAssistantModels = selectedAssistant?.models ?? [];
   const selectedManagedAgentRuntimeCatalog = useMemo(
     () =>
@@ -244,7 +254,10 @@ export const useGuidAssistantSelection = ({
       currentValue: selectedThoughtLevelValue || selectedAgentRuntimeThoughtLevelOption.currentValue,
     };
   }, [selectedAgentRuntimeThoughtLevelOption, selectedThoughtLevelValue]);
-  const currentAgentModeOptions = selectedAgentRuntimeModeState.options;
+  const currentAgentModeOptions = useMemo(
+    () => withCursorYoloModeOption(selectedAssistantBackend, selectedAgentRuntimeModeState.options),
+    [selectedAssistantBackend, selectedAgentRuntimeModeState.options]
+  );
 
   const selectedAssistantAvailable = useMemo(() => {
     return selectedAssistant?.agent_status === 'online';
@@ -274,18 +287,17 @@ export const useGuidAssistantSelection = ({
     const availableModelIds = new Set(
       selectedAgentRuntimeModelInfo?.available_models.map((model) => model.id) ?? selectedAssistantModels
     );
+    const availableIdList = [...availableModelIds];
     const selectionScope = selectedAssistantId ?? '';
 
     _setSelectedAcpModel((previousModelId) => {
       const scopeChanged = modelSelectionScopeRef.current !== selectionScope;
       modelSelectionScopeRef.current = selectionScope;
 
-      if (
-        !scopeChanged &&
-        previousModelId &&
-        (availableModelIds.size === 0 || availableModelIds.has(previousModelId))
-      ) {
-        return previousModelId;
+      if (!scopeChanged && previousModelId) {
+        if (availableModelIds.size === 0) return previousModelId;
+        const catalogId = catalogCursorModelId(availableIdList, previousModelId);
+        if (catalogId) return catalogId;
       }
 
       return fallbackModelId;
@@ -293,10 +305,12 @@ export const useGuidAssistantSelection = ({
   }, [selectedAssistantId, selectedAssistantModels, selectedAgentRuntimeModelInfo]);
 
   useEffect(() => {
-    const fallbackMode =
+    const catalogMode =
       selectedAgentRuntimeModeState.currentMode || selectedAgentRuntimeModeState.options[0]?.value || 'default';
-    _setSelectedMode(fallbackMode);
-  }, [selectedAgentRuntimeModeState]);
+    _setSelectedMode(
+      displayedCursorPermissionMode(selectedAssistantBackend, catalogMode, readCursorYoloMode()) ?? catalogMode
+    );
+  }, [selectedAgentRuntimeModeState, selectedAssistantBackend]);
 
   const thoughtLevelSelectionScopeRef = useRef<string | null>(null);
   useEffect(() => {

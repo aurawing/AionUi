@@ -7,6 +7,7 @@
   "read-only": "Solo lectura",
   "full-access": "Acceso completo",
   "yolo": "YOLO",
+  "yoloTooltip": "Aprueba automáticamente solicitudes de shell y herramientas. La sesión de Cursor permanece en modo Agent.",
   "yoloNoSandbox": "Auto completo (sin sandbox)",
   "auto": "Auto",
   "dontAsk": "No preguntar",

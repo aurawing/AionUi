@@ -102,6 +102,7 @@ const runtimeMode = () => ({
 
 describe('AgentModeSelector', () => {
   beforeEach(() => {
+    localStorage.clear();
     vi.clearAllMocks();
     useAcpConfigOptionsMock.mockImplementation(() => ({
       setStatus: { state: 'idle' },
@@ -338,5 +339,85 @@ describe('AgentModeSelector', () => {
       'data-tooltip-content',
       'Run without permission prompts'
     );
+  });
+
+  it('adds a Cursor YOLO option and keeps ACP on agent when YOLO is already in force', async () => {
+    const { Message } = (await import('@arco-design/web-react')) as unknown as {
+      Message: { success: ReturnType<typeof vi.fn>; error: ReturnType<typeof vi.fn>; info: ReturnType<typeof vi.fn> };
+    };
+    const setConfigOption = vi.fn().mockResolvedValue([{ id: 'mode', current_value: 'agent' }]);
+    const onModeChanged = vi.fn();
+    useAcpConfigOptionsMock.mockImplementation(() => ({
+      setStatus: { state: 'idle' },
+      isLoading: false,
+      mode: {
+        id: 'mode',
+        category: 'mode',
+        currentValue: 'agent',
+        options: [
+          { value: 'agent', label: 'Agent', description: 'Run tools' },
+          { value: 'plan', label: 'Plan', description: 'Read only' },
+        ],
+      },
+      model: null,
+      thoughtLevel: null,
+      reload: vi.fn(),
+      setConfigOption,
+    }));
+
+    render(
+      <AgentModeSelector
+        backend='cursor'
+        conversation_id='conv-1'
+        compact
+        modeLabelFormatter={(mode) => (mode.value === 'yolo' ? '全自动' : mode.label)}
+        onModeChanged={onModeChanged}
+      />
+    );
+
+    fireEvent.click(screen.getByText('全自动'));
+
+    await waitFor(() => expect(onModeChanged).toHaveBeenCalledWith('agent'));
+    expect(setConfigOption).not.toHaveBeenCalled();
+    expect(Message.success).toHaveBeenCalled();
+    await waitFor(() => expect(screen.getByTestId('mode-selector')).toHaveAttribute('data-current-mode', 'yolo'));
+  });
+
+  it('switches Cursor from plan to agent when the user picks YOLO', async () => {
+    const setConfigOption = vi.fn().mockResolvedValue([{ id: 'mode', current_value: 'agent' }]);
+    const onModeChanged = vi.fn();
+    useAcpConfigOptionsMock.mockImplementation(() => ({
+      setStatus: { state: 'idle' },
+      isLoading: false,
+      mode: {
+        id: 'mode',
+        category: 'mode',
+        currentValue: 'plan',
+        options: [
+          { value: 'agent', label: 'Agent', description: 'Run tools' },
+          { value: 'plan', label: 'Plan', description: 'Read only' },
+        ],
+      },
+      model: null,
+      thoughtLevel: null,
+      reload: vi.fn(),
+      setConfigOption,
+    }));
+
+    render(
+      <AgentModeSelector
+        backend='cursor'
+        conversation_id='conv-1'
+        compact
+        modeLabelFormatter={(mode) => (mode.value === 'yolo' ? '全自动' : mode.label)}
+        onModeChanged={onModeChanged}
+      />
+    );
+
+    fireEvent.click(screen.getByText('全自动'));
+
+    await waitFor(() => expect(setConfigOption).toHaveBeenCalledWith('mode', 'agent'));
+    expect(setConfigOption).not.toHaveBeenCalledWith('mode', 'yolo');
+    await waitFor(() => expect(onModeChanged).toHaveBeenCalledWith('agent'));
   });
 });

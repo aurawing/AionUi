@@ -78,6 +78,7 @@ const AcpChat: React.FC<{
         conversation_id: conversation_id,
         workspace,
         type: 'acp',
+        backend,
         cron_job_id,
         hideSendBox,
         loadedSkills,

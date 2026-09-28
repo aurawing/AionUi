@@ -6,6 +6,9 @@
 
 import type { IMessageAcpPermission } from '@/common/chat/chatLib';
 import { conversation } from '@/common/adapter/ipcBridge';
+import { isCursorBackend, pickCursorYoloApprovalOptionId } from '@/common/types/agent/cursorYolo';
+import { useCursorYoloMode } from '@/renderer/hooks/agent/useCursorFastMode';
+import { useConversationContextSafe } from '@/renderer/hooks/context/ConversationContext';
 import {
   classifyAcpPermission,
   normalizePermissionOperationKind,
@@ -24,6 +27,8 @@ const MessageAcpPermission: React.FC<MessageAcpPermissionProps> = React.memo(({ 
   const options = Array.isArray(content.options) ? content.options : [];
   const { t } = useTranslation();
   const toolCallId = tool_call?.tool_call_id;
+  const conversationContext = useConversationContextSafe();
+  const { yoloEnabled } = useCursorYoloMode();
 
   const panelOptions = useMemo(
     () =>
@@ -40,6 +45,11 @@ const MessageAcpPermission: React.FC<MessageAcpPermissionProps> = React.memo(({ 
       }),
     [options, t]
   );
+
+  const autoConfirmValue = useMemo(() => {
+    if (!isCursorBackend(conversationContext?.backend) || !yoloEnabled) return undefined;
+    return pickCursorYoloApprovalOptionId(options) ?? undefined;
+  }, [conversationContext?.backend, options, yoloEnabled]);
 
   const handleConfirm = useCallback(
     async (selectedValue: string) => {
@@ -91,6 +101,7 @@ const MessageAcpPermission: React.FC<MessageAcpPermissionProps> = React.memo(({ 
       detail={detail}
       detailLabelKey={command ? undefined : 'messages.requestDetails'}
       options={panelOptions}
+      autoConfirmValue={autoConfirmValue}
       onConfirm={handleConfirm}
     />
   );

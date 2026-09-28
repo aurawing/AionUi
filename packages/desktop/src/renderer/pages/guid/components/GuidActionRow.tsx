@@ -5,6 +5,8 @@
  */
 
 import { ipcBridge } from '@/common';
+import { advertisedCursorModelId } from '@/common/types/agent/cursorModelId';
+import { withCursorYoloModeOption } from '@/common/types/agent/cursorYolo';
 import type { IMcpServer, IProvider, TProviderWithModel } from '@/common/config/storage';
 import AgentModeSelector from '@/renderer/components/agent/AgentModeSelector';
 import { DROPDOWN_SEARCH_THRESHOLD } from '@/renderer/components/agent/runtimeSelectorOptions';
@@ -164,6 +166,10 @@ const GuidActionRow: React.FC<GuidActionRowProps> = ({
     }
   }, []);
   const showModeSwitch = dynamicModes.length > 0;
+  const permissionModes = useMemo(
+    () => withCursorYoloModeOption(modeBackend, dynamicModes, t('agentMode.yoloTooltip')),
+    [dynamicModes, modeBackend, t]
+  );
   const configOptionCount = (modelSelectorNode ? 1 : 0) + (showModeSwitch ? 1 : 0);
 
   // Browser file picker ref (WebUI only)
@@ -250,14 +256,20 @@ const GuidActionRow: React.FC<GuidActionRowProps> = ({
       };
     } else {
       const available = currentAcpCachedModelInfo?.available_models ?? [];
+      const advertisedSelected = advertisedCursorModelId(
+        available.map((model) => model.id),
+        selectedAcpModel
+      );
       modelOptions = available.map((model) => ({
         key: model.id,
         label: model.label || model.id,
         description: model.description,
-        active: model.id === selectedAcpModel,
+        active: model.id === advertisedSelected,
       }));
       currentModelLabel =
-        available.find((m) => m.id === selectedAcpModel)?.label || currentAcpCachedModelInfo?.current_model_label || '';
+        available.find((m) => m.id === advertisedSelected)?.label ||
+        currentAcpCachedModelInfo?.current_model_label ||
+        '';
       onModelSelect = (key) => setSelectedAcpModel(key);
     }
     if (modelOptions.length > 0) {
@@ -296,8 +308,8 @@ const GuidActionRow: React.FC<GuidActionRowProps> = ({
     }
 
     // Permission / agent mode.
-    if (dynamicModes.length > 0) {
-      const modeOptions: MobileActionSheetOption[] = dynamicModes.map((mode) => ({
+    if (permissionModes.length > 0) {
+      const modeOptions: MobileActionSheetOption[] = permissionModes.map((mode) => ({
         key: mode.value,
         label: t(`agentMode.${mode.value}`, { defaultValue: mode.label }),
         description: mode.description,
@@ -412,7 +424,7 @@ const GuidActionRow: React.FC<GuidActionRowProps> = ({
     setSelectedAcpModel,
     thoughtLevelOption,
     onThoughtLevelSelect,
-    dynamicModes,
+    permissionModes,
     selectedMode,
     onModeSelect,
     allSkills,
@@ -641,7 +653,7 @@ const GuidActionRow: React.FC<GuidActionRowProps> = ({
                 compact
                 initialMode={selectedMode}
                 onModeSelect={onModeSelect}
-                dynamicModes={dynamicModes}
+                dynamicModes={permissionModes}
                 compactLeadingIcon={<Shield theme='outline' size='14' fill={iconColors.secondary} />}
                 modeLabelFormatter={getModeDisplayLabel}
               />

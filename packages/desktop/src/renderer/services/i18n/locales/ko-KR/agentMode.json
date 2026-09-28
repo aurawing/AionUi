@@ -7,6 +7,7 @@
   "read-only": "읽기 전용",
   "full-access": "전체 접근",
   "yolo": "전체 자동",
+  "yoloTooltip": "셸 및 도구 요청을 자동 승인합니다. Cursor 세션은 Agent 모드를 유지합니다.",
   "yoloNoSandbox": "전체 자동(샌드박스 없음)",
   "auto": "자동",
   "dontAsk": "사전 승인만",

@@ -7,6 +7,7 @@
   "read-only": "唯讀",
   "full-access": "完整存取",
   "yolo": "全自動",
+  "yoloTooltip": "自動批准終端與工具請求。Cursor 工作階段仍保持 Agent 模式。",
   "yoloNoSandbox": "全自動（無沙盒）",
   "auto": "自動",
   "dontAsk": "僅預批准",
