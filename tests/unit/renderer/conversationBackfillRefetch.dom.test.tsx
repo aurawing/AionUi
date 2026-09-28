@@ -23,9 +23,16 @@ import type { IConversationListChangedEvent } from '@/common/adapter/ipcBridge';
 import type { TChatConversation } from '@/common/config/storage';
 
 vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (k: string) => k }) }));
+const { navigateMock } = vi.hoisted(() => ({
+  navigateMock: vi.fn(),
+}));
 vi.mock('react-router-dom', () => ({
   useParams: () => ({ id: 'c1' }),
-  useNavigate: () => vi.fn(),
+  useNavigate: () => navigateMock,
+}));
+vi.mock('@arco-design/web-react', () => ({
+  Message: { warning: vi.fn() },
+  Spin: () => <div data-testid='spin' />,
 }));
 vi.mock('@/renderer/pages/conversation/components/ChatConversation', () => ({
   default: () => <div data-testid='chat' />,
@@ -36,10 +43,16 @@ vi.mock('@/renderer/pages/conversation/Preview', () => ({
 vi.mock('@/renderer/hooks/chat/useAutoTitle', () => ({ useAutoTitle: () => ({ syncTitleFromHistory: vi.fn() }) }));
 
 // getConversationOrNull is the fetcher; sequence null-project → backfilled.
-const getConversationOrNull = vi.fn<(id: string) => Promise<TChatConversation | null>>();
-vi.mock('@/renderer/pages/conversation/utils/conversationCache', () => ({
-  getConversationOrNull: (id: string) => getConversationOrNull(id),
+const { getConversationOrNull } = vi.hoisted(() => ({
+  getConversationOrNull: vi.fn<(id: string) => Promise<TChatConversation | null>>(),
 }));
+vi.mock('@/renderer/pages/conversation/utils/conversationCache', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/renderer/pages/conversation/utils/conversationCache')>();
+  return {
+    ...actual,
+    getConversationOrNull: (id: string) => getConversationOrNull(id),
+  };
+});
 
 // Capture the listChanged listener so the test can fire the backend event.
 let listChangedCb: ((e: IConversationListChangedEvent) => void) | null = null;
@@ -77,6 +90,7 @@ const renderIndex = () =>
 beforeEach(() => {
   resetCurrentProjectForTest();
   getConversationOrNull.mockReset();
+  navigateMock.mockReset();
   listChangedCb = null;
 });
 afterEach(() => cleanup());
@@ -113,5 +127,47 @@ describe('conversation project_id backfill — responsive refetch on listChanged
     await new Promise((r) => setTimeout(r, 50));
     expect(getConversationOrNull).toHaveBeenCalledTimes(1);
     expect(getCurrentProject()).toBeNull();
+  });
+
+  it('does not bounce to home while the first conversation fetch is still in flight', async () => {
+    getConversationOrNull.mockImplementation(() => new Promise(() => {}));
+    renderIndex();
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(navigateMock).not.toHaveBeenCalled();
+  });
+
+  it('does not bounce to home when a later listChanged refetch 404s', async () => {
+    getConversationOrNull.mockResolvedValueOnce(conv('p1')).mockResolvedValue(null);
+    renderIndex();
+    await waitFor(() => expect(getConversationOrNull).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(getCurrentProject()).toBe('p1'));
+
+    await act(async () => {
+      listChangedCb?.({ conversation_id: 'c1', action: 'updated' } as IConversationListChangedEvent);
+    });
+
+    await waitFor(() => expect(getConversationOrNull).toHaveBeenCalledTimes(2));
+    expect(navigateMock).not.toHaveBeenCalled();
+    expect(getCurrentProject()).toBe('p1');
+  });
+
+  it('goes home when the first load confirms the conversation is missing', async () => {
+    getConversationOrNull.mockResolvedValue(null);
+    renderIndex();
+    await waitFor(() => expect(navigateMock).toHaveBeenCalledWith('/', { replace: true }));
+  });
+
+  it('goes home when the open conversation is deleted', async () => {
+    getConversationOrNull.mockResolvedValue(conv('p1'));
+    renderIndex();
+    await waitFor(() => expect(getCurrentProject()).toBe('p1'));
+
+    await act(async () => {
+      listChangedCb?.({ conversation_id: 'c1', action: 'deleted' } as IConversationListChangedEvent);
+    });
+
+    await waitFor(() => expect(navigateMock).toHaveBeenCalledWith('/', { replace: true }));
   });
 });

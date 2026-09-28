@@ -1,4 +1,5 @@
 import { ipcBridge } from '@/common';
+import type { TChatConversation } from '@/common/config/storage';
 import { Message, Spin } from '@arco-design/web-react';
 import React, { useEffect, useLayoutEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -10,7 +11,10 @@ import { previewScopeKey } from '@/renderer/pages/conversation/Preview/context/p
 import { setCurrentProject } from '@/renderer/pages/conversation/explorer/currentProjectStore';
 import { setCurrentConversation } from '@/renderer/pages/conversation/explorer/currentConversationStore';
 import { useAutoTitle } from '@/renderer/hooks/chat/useAutoTitle';
-import { getConversationOrNull } from '@/renderer/pages/conversation/utils/conversationCache';
+import {
+  getConversationOrNull,
+  keepConversationOnRefetchMiss,
+} from '@/renderer/pages/conversation/utils/conversationCache';
 import { getSnapshotConversationProjectId } from '@/renderer/pages/conversation/GroupedHistory/hooks/useConversationListSync';
 
 const ChatConversationIndex: React.FC = () => {
@@ -20,10 +24,20 @@ const ChatConversationIndex: React.FC = () => {
   const { closePreviewIfScopeChanged } = usePreviewContext();
   const { syncTitleFromHistory } = useAutoTitle();
   const notFoundHandledIdRef = useRef<string | undefined>(undefined);
+  const loadedConversationRef = useRef<TChatConversation | undefined>(undefined);
   const defaultConversationTitle = t('conversation.welcome.newConversation');
 
-  const { data, isLoading, mutate } = useSWR(id ? `conversation/${id}` : null, () => {
-    return getConversationOrNull(id!);
+  if (loadedConversationRef.current && loadedConversationRef.current.id !== id) {
+    loadedConversationRef.current = undefined;
+  }
+
+  const { data, error, isLoading, isValidating, mutate } = useSWR(id ? `conversation/${id}` : null, async () => {
+    const incoming = await getConversationOrNull(id!);
+    const resolved = keepConversationOnRefetchMiss(id!, loadedConversationRef.current, incoming);
+    if (resolved) {
+      loadedConversationRef.current = resolved;
+    }
+    return resolved;
   });
 
   // Close preview only when the isolation scope changes, not on every
@@ -78,10 +92,13 @@ const ChatConversationIndex: React.FC = () => {
     if (!id) return;
 
     return ipcBridge.conversation.listChanged.on((event) => {
-      if (event.conversation_id !== id || (event.action !== 'updated' && event.action !== 'created')) {
+      if (event.conversation_id !== id) return;
+      if (event.action === 'deleted') {
+        loadedConversationRef.current = undefined;
+        void mutate(null, { revalidate: false });
         return;
       }
-
+      if (event.action !== 'updated' && event.action !== 'created') return;
       void mutate();
     });
   }, [id, mutate]);
@@ -94,20 +111,21 @@ const ChatConversationIndex: React.FC = () => {
     void syncTitleFromHistory(data.id);
   }, [data, defaultConversationTitle, syncTitleFromHistory]);
 
-  // 会话不存在（例如从历史栈回到已删除会话）时，提示并替换路由到首页，
-  // 避免渲染空骨架。每个 id 只触发一次。
-  // Conversation does not exist (e.g. navigating back to a deleted one via
-  // browser history): show a toast and replace the route with home, so we
-  // don't render an empty skeleton. Fire at most once per id.
+  // Only a settled `null` means the conversation is gone. `undefined` is "not
+  // loaded yet" (SWR's first paint, or a thrown fetch) and must not bounce
+  // the user to /guid — that looked like the chat randomly closed.
   useEffect(() => {
-    if (!id || isLoading || data || notFoundHandledIdRef.current === id) return;
+    if (!id || notFoundHandledIdRef.current === id) return;
+    if (isLoading || isValidating || error) return;
+    if (data !== null) return;
     notFoundHandledIdRef.current = id;
     Message.warning(t('conversation.notFound'));
     navigate('/', { replace: true });
-  }, [id, isLoading, data, navigate, t]);
+  }, [id, isLoading, isValidating, error, data, navigate, t]);
 
-  if (isLoading) return <Spin loading></Spin>;
-  return <ChatConversation conversation={data ?? undefined}></ChatConversation>;
+  if (isLoading || data === undefined) return <Spin loading></Spin>;
+  if (!data) return <Spin loading></Spin>;
+  return <ChatConversation conversation={data}></ChatConversation>;
 };
 
 export default ChatConversationIndex;

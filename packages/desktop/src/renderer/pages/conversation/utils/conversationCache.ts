@@ -11,7 +11,9 @@ import { mutate } from 'swr';
 
 export async function getConversationOrNull(conversation_id: string): Promise<TChatConversation | null> {
   try {
-    return await ipcBridge.conversation.get.invoke({ id: conversation_id });
+    const conversation = await ipcBridge.conversation.get.invoke({ id: conversation_id });
+    if (conversation && conversation.id) return conversation;
+    return null;
   } catch (error) {
     if (isBackendHttpError(error) && error.status === 404 && error.code === 'NOT_FOUND') {
       return null;
@@ -19,6 +21,20 @@ export async function getConversationOrNull(conversation_id: string): Promise<TC
     throw error;
   }
 }
+
+/**
+ * A refetch 404/empty body is not proof the open conversation was deleted.
+ * Keep the row the user is already viewing; only a first-load miss stays `null`.
+ */
+export const keepConversationOnRefetchMiss = (
+  conversationId: string,
+  current: TChatConversation | undefined,
+  incoming: TChatConversation | null | undefined
+): TChatConversation | null => {
+  if (incoming?.id === conversationId) return incoming;
+  if (current?.id === conversationId) return current;
+  return null;
+};
 
 export async function refreshConversationCache(conversation_id: string): Promise<void> {
   const conversation = await getConversationOrNull(conversation_id);
