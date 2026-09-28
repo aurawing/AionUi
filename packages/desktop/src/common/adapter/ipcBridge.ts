@@ -94,6 +94,14 @@ import type {
   UpdateDownloadRequest,
   UpdateDownloadResult,
 } from '../update/updateTypes';
+import type {
+  CursorApiKeyVerifyRequest,
+  CursorApiKeyVerifyResult,
+  CursorCliInstallProgressEvent,
+  CursorCliInstallRequest,
+  CursorCliInstallResult,
+  CursorCliStatus,
+} from '../types/agent/cursorCli';
 import type { AgentMetadata } from '@/renderer/utils/model/agentTypes';
 import type { Theme } from '@/common/theme/types';
 import type { AttachFolderRequest, ProjectDetailDto, ProjectEntryDto } from '@/common/types/project';
@@ -757,6 +765,20 @@ export const autoUpdate = {
   cancelDownload: bridge.buildProvider<IBridgeResponse, void>('auto-update.download.cancel'),
   quitAndInstall: bridge.buildProvider<void, void>('auto-update.quit-and-install'),
   status: bridge.buildEmitter<AutoUpdateStatus>('auto-update.status'),
+};
+
+// ---------------------------------------------------------------------------
+// Cursor CLI — stays IPC (main process downloads and owns the managed binary;
+// the providers are not served over WebUI)
+// ---------------------------------------------------------------------------
+
+export const cursorCli = {
+  getStatus: bridge.buildProvider<IBridgeResponse<CursorCliStatus>, void>('cursor-cli.status'),
+  install: bridge.buildProvider<IBridgeResponse<CursorCliInstallResult>, CursorCliInstallRequest>('cursor-cli.install'),
+  verifyApiKey: bridge.buildProvider<IBridgeResponse<CursorApiKeyVerifyResult>, CursorApiKeyVerifyRequest>(
+    'cursor-cli.verify-api-key'
+  ),
+  installProgress: bridge.buildEmitter<CursorCliInstallProgressEvent>('cursor-cli.install.progress'),
 };
 
 // ---------------------------------------------------------------------------

@@ -5,6 +5,7 @@
  */
 
 import { initApplicationBridge } from './applicationBridge';
+import { initCursorCliBridge } from './cursorCliBridge';
 import { initDialogBridge } from './dialogBridge';
 import { initUpdateBridge } from './updateBridge';
 import { initSystemSettingsBridge } from './systemSettingsBridge';
@@ -24,10 +25,12 @@ export function initAllBridges(_deps: BridgeDependencies = {}): void {
   initNotificationBridge();
   initWebuiBridge();
   initThemeBridge();
+  initCursorCliBridge();
 }
 
 export {
   initApplicationBridge,
+  initCursorCliBridge,
   initDialogBridge,
   initNotificationBridge,
   initSystemSettingsBridge,
