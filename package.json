@@ -28,6 +28,8 @@
     "dist:mac": "node scripts/build-with-builder.js auto --mac",
     "dist:win": "node scripts/build-with-builder.js auto --win",
     "dist:linux": "node scripts/build-with-builder.js auto --linux",
+    "prepare-mac-kit": "node scripts/packaging/prepare-mac-kit.js",
+    "pack:mac": "bash scripts/packaging/pack-mac.sh",
     "build-mac": "node scripts/build-with-builder.js auto --mac --arm64 --x64",
     "build-win": "node scripts/build-with-builder.js auto --win",
     "build-deb": "node scripts/build-with-builder.js auto --linux",

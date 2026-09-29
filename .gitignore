@@ -204,6 +204,7 @@ worktrees/
 docs/superpowers/
 resources/bundled-bun
 resources/bundled-aioncore
+vendor/mac-pack/
 resources/aioncore-download
 resources/aioncore-local-bundle
 resources/hub
