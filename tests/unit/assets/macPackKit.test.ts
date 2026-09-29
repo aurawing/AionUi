@@ -89,4 +89,33 @@ describe('mac pack kit mapping', () => {
       /only one of --bun-only or --electron-only/
     );
   });
+
+  it('prefers AIONUI_PACK_PROXY over generic proxy env vars', () => {
+    expect(
+      kit.pickPackProxy({
+        AIONUI_PACK_PROXY: 'socks5://127.0.0.1:10808',
+        HTTPS_PROXY: 'http://127.0.0.1:10809',
+      })
+    ).toBe('socks5://127.0.0.1:10808');
+  });
+
+  it('returns empty when no pack proxy is configured', () => {
+    expect(kit.pickPackProxy({})).toBe('');
+    expect(kit.packProxyEnv('')).toEqual({});
+  });
+
+  it('exports bun/curl/electron proxy variables from one URL', () => {
+    expect(kit.packProxyEnv('socks5://127.0.0.1:10808')).toMatchObject({
+      ALL_PROXY: 'socks5://127.0.0.1:10808',
+      HTTPS_PROXY: 'socks5://127.0.0.1:10808',
+      ELECTRON_GET_USE_PROXY: 'true',
+      GLOBAL_AGENT_HTTPS_PROXY: 'socks5://127.0.0.1:10808',
+    });
+  });
+
+  it('flags HTTP URLs that point at the usual SOCKS port', () => {
+    expect(kit.looksLikeHttpOnSocksPort('http://192.168.3.7:10808')).toBe(true);
+    expect(kit.looksLikeHttpOnSocksPort('socks5://192.168.3.7:10808')).toBe(false);
+    expect(kit.looksLikeHttpOnSocksPort('http://192.168.3.7:10809')).toBe(false);
+  });
 });

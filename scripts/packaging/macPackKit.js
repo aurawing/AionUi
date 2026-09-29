@@ -120,6 +120,46 @@ function isCompleteElectronZipSize(bytes) {
   return Number(bytes) >= MIN_ELECTRON_ZIP_BYTES;
 }
 
+const PACK_PROXY_ENV_KEYS = [
+  'AIONUI_PACK_PROXY',
+  'ALL_PROXY',
+  'all_proxy',
+  'HTTPS_PROXY',
+  'https_proxy',
+  'HTTP_PROXY',
+  'http_proxy',
+];
+
+function pickPackProxy(env = {}) {
+  for (const key of PACK_PROXY_ENV_KEYS) {
+    const value = String(env[key] || '').trim();
+    if (value) return value;
+  }
+  return '';
+}
+
+function looksLikeHttpOnSocksPort(proxy) {
+  return /^https?:\/\/[^/\s]+:10808(?:\/|$)/i.test(String(proxy || '').trim());
+}
+
+function packProxyEnv(proxy) {
+  const value = String(proxy || '').trim();
+  if (!value) {
+    return {};
+  }
+  return {
+    ALL_PROXY: value,
+    all_proxy: value,
+    HTTPS_PROXY: value,
+    https_proxy: value,
+    HTTP_PROXY: value,
+    http_proxy: value,
+    ELECTRON_GET_USE_PROXY: 'true',
+    GLOBAL_AGENT_HTTPS_PROXY: value,
+    GLOBAL_AGENT_HTTP_PROXY: value,
+  };
+}
+
 function assertSafeZipEntry(entryName) {
   const name = String(entryName || '').replace(/\\/g, '/');
   if (!name || name.startsWith('/') || name.includes('..')) {
@@ -145,7 +185,11 @@ module.exports = {
   electronZipName,
   isCompleteElectronZipSize,
   kitPaths,
+  looksLikeHttpOnSocksPort,
+  PACK_PROXY_ENV_KEYS,
+  packProxyEnv,
   parseElectronVersion,
+  pickPackProxy,
   resolveBunVersion,
   stripVersionPrefix,
 };
