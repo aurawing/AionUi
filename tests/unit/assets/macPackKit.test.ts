@@ -113,6 +113,18 @@ describe('mac pack kit mapping', () => {
     });
   });
 
+  it('strips the Developer ID Application prefix from CSC_NAME', () => {
+    expect(kit.stripCscNamePrefix('Developer ID Application: Tianjin Shuyuan Technology Co.,Ltd. (4295LWG5D8)')).toBe(
+      'Tianjin Shuyuan Technology Co.,Ltd. (4295LWG5D8)'
+    );
+  });
+
+  it('leaves CSC_NAME unchanged when it has no certificate-type prefix', () => {
+    expect(kit.stripCscNamePrefix('Tianjin Shuyuan Technology Co.,Ltd. (4295LWG5D8)')).toBe(
+      'Tianjin Shuyuan Technology Co.,Ltd. (4295LWG5D8)'
+    );
+  });
+
   it('flags HTTP URLs that point at the usual SOCKS port', () => {
     expect(kit.looksLikeHttpOnSocksPort('http://192.168.3.7:10808')).toBe(true);
     expect(kit.looksLikeHttpOnSocksPort('socks5://192.168.3.7:10808')).toBe(false);

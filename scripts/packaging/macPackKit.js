@@ -138,6 +138,12 @@ function pickPackProxy(env = {}) {
   return '';
 }
 
+function stripCscNamePrefix(name) {
+  return String(name || '')
+    .replace(/^\s*Developer ID Application:\s*/i, '')
+    .trim();
+}
+
 function looksLikeHttpOnSocksPort(proxy) {
   return /^https?:\/\/[^/\s]+:10808(?:\/|$)/i.test(String(proxy || '').trim());
 }
@@ -191,5 +197,6 @@ module.exports = {
   parseElectronVersion,
   pickPackProxy,
   resolveBunVersion,
+  stripCscNamePrefix,
   stripVersionPrefix,
 };

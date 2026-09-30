@@ -70,8 +70,8 @@ GH_TOKEN=相同的Personal Access Token
 
 1. 打开 Xcode 或 Keychain Access
 2. 查看已安装的开发者证书
-3. 证书名称类似："Developer ID Application: Your Name (TEAM_ID)"
-4. 复制完整证书名称作为 `IDENTITY`
+3. 钥匙串里会显示类似：`Developer ID Application: Your Name (TEAM_ID)`
+4. `IDENTITY` / `CSC_NAME` **只填冒号后面的部分**，不要带 `Developer ID Application:` 前缀（electron-builder 会自己加）。例如：`Your Name (TEAM_ID)`
 
 ## 使用方法
 

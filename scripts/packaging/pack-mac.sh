@@ -114,6 +114,13 @@ fi
 export PATH="$(dirname "${BUN}"):${PATH}"
 export AIONUI_HUB_SKIP="${AIONUI_HUB_SKIP:-1}"
 export CSC_IDENTITY_AUTO_DISCOVERY="${CSC_IDENTITY_AUTO_DISCOVERY:-false}"
+# electron-builder rejects "Developer ID Application:" in CSC_NAME and adds it itself.
+if [[ -n "${CSC_NAME:-}" ]]; then
+  CSC_NAME="${CSC_NAME#Developer ID Application:}"
+  CSC_NAME="${CSC_NAME#"${CSC_NAME%%[![:space:]]*}"}"
+  export CSC_NAME
+  echo "CSC_NAME=${CSC_NAME}"
+fi
 export ELECTRON_MIRROR="${ELECTRON_MIRROR:-https://npmmirror.com/mirrors/electron/}"
 export ELECTRON_BUILDER_BINARIES_MIRROR="${ELECTRON_BUILDER_BINARIES_MIRROR:-https://npmmirror.com/mirrors/electron-builder-binaries/}"
 
