@@ -135,9 +135,81 @@ echo
 echo "正在安装 JS 依赖（首次需要网络；不能沿用 Windows 上的 node_modules）..."
 bun_install_with_retry
 
+normalize_apple_env() {
+  export appleId="${appleId:-${APPLE_ID:-}}"
+  export appleIdPassword="${appleIdPassword:-${APPLE_ID_PASSWORD:-}}"
+  export teamId="${teamId:-${APPLE_TEAM_ID:-${TEAM_ID:-}}}"
+  export APPLE_ID="${APPLE_ID:-${appleId}}"
+  export APPLE_ID_PASSWORD="${APPLE_ID_PASSWORD:-${appleIdPassword}}"
+  export TEAM_ID="${TEAM_ID:-${teamId}}"
+}
+
+require_notarize_credentials() {
+  local missing=()
+  [[ -n "${CSC_NAME:-}" ]] || missing+=("CSC_NAME")
+  [[ -n "${appleId}" ]] || missing+=("appleId/APPLE_ID")
+  [[ -n "${appleIdPassword}" ]] || missing+=("appleIdPassword/APPLE_ID_PASSWORD")
+  [[ -n "${teamId}" ]] || missing+=("teamId/TEAM_ID")
+  if [[ "${#missing[@]}" -gt 0 ]]; then
+    echo "要打出能通过 spctl 的安装包，请先 export："
+    echo "  CSC_NAME=\"Tianjin Shuyuan Technology Co.,Ltd. (4295LWG5D8)\""
+    echo "  appleId=\"你的AppleID邮箱\""
+    echo "  appleIdPassword=\"应用专用密码\""
+    echo "  teamId=\"4295LWG5D8\""
+    echo "缺少: ${missing[*]}"
+    echo "仅打未公证包时设置 AIONUI_SKIP_NOTARIZE=1。"
+    exit 1
+  fi
+}
+
+staple_notarize_dmg() {
+  local dmg app
+  shopt -s nullglob
+  local dmgs=("${ROOT}"/out/AionUi-*-mac-*.dmg)
+  if [[ "${#dmgs[@]}" -eq 0 ]]; then
+    echo "未找到 out/AionUi-*-mac-*.dmg，无法公证。"
+    exit 1
+  fi
+  for app in "${ROOT}/out/mac-arm64/AionUi.app" "${ROOT}/out/mac/AionUi.app" "${ROOT}/out/mac-x64/AionUi.app"; do
+    if [[ -d "${app}" ]]; then
+      echo "Staple ${app}"
+      xcrun stapler staple "${app}"
+      xcrun stapler validate "${app}"
+    fi
+  done
+  for dmg in "${dmgs[@]}"; do
+    echo "公证 dmg: ${dmg}"
+    xcrun notarytool submit "${dmg}" \
+      --apple-id "${appleId}" \
+      --password "${appleIdPassword}" \
+      --team-id "${teamId}" \
+      --wait
+    echo "Staple ${dmg}"
+    xcrun stapler staple "${dmg}"
+    xcrun stapler validate "${dmg}"
+    xattr -w com.apple.quarantine "0081;00000000;Safari;AionUi" "${dmg}" 2>/dev/null || true
+    echo "spctl 检查 ${dmg}"
+    spctl --assess --verbose=4 --type open --context context:primary-signature "${dmg}"
+  done
+}
+
+normalize_apple_env
+
 echo
-echo "开始打包 macOS 安装包（无公证证书时使用 ad-hoc 签名）..."
+if [[ "${AIONUI_SKIP_NOTARIZE:-}" == "1" ]]; then
+  echo "AIONUI_SKIP_NOTARIZE=1，跳过公证/staple（spctl 不会通过）。"
+else
+  require_notarize_credentials
+  echo "将使用 Developer ID 签名，公证 .app 与 .dmg，并 staple。"
+fi
+echo "开始打包 macOS 安装包..."
 "${BUN}" run dist:mac
+
+if [[ "${AIONUI_SKIP_NOTARIZE:-}" != "1" ]]; then
+  echo
+  echo "对 dmg 提交公证并 staple..."
+  staple_notarize_dmg
+fi
 
 echo
 echo "完成。安装包在: ${ROOT}/out"
